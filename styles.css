@@ -1,14 +1,14 @@
 /* styles.css — 所有样式。颜色/断点统一走 CSS 变量,禁止在组件里散落硬编码色值。 */
 
 :root {
-  /* 色板(Flat UI Colors,见 CLAUDE.md。--color-accent-soft 与
-     --color-border 当前同值,未新增区分变量) */
+  /* 色板(Flat UI Colors,见 CLAUDE.md。text-secondary 对 bg 对比度
+     5.00:1;accent-soft 已拆分为独立浅色调,不再与 border 同值) */
   --color-bg: #ECF0F1;
   --color-surface: #FFFFFF;
   --color-text-primary: #2C3E50;
-  --color-text-secondary: #7F8C8D;
+  --color-text-secondary: #5E6869;
   --color-accent: #34495E;
-  --color-accent-soft: #BDC3C7;
+  --color-accent-soft: #CAD6E2;
   --color-border: #BDC3C7;
 
   /* 布局尺寸 */

@@ -54,13 +54,18 @@ PostgreSQL + Redis + Next.js)等真实工程项目。
 --color-bg: #ECF0F1;
 --color-surface: #FFFFFF;
 --color-text-primary: #2C3E50;
---color-text-secondary: #7F8C8D;
+--color-text-secondary: #5E6869;
 --color-accent: #34495E;
---color-accent-soft: #BDC3C7;
+--color-accent-soft: #CAD6E2;
 --color-border: #BDC3C7;
 
-注:--color-accent-soft 与 --color-border 当前同值(#BDC3C7),
-未新增区分变量;如某处两者需要区分,以实际反馈为准。
+注:
+- --color-text-secondary 在 --color-bg 上对比度 5.00:1(WCAG AA 达标,
+  原 #7F8C8D 仅 3.03:1 不达标)。取值方式:保持原色相/饱和度不变,
+  仅降低明度,同色系内加深一档。
+- --color-accent-soft 已从 --color-border 中拆分为独立浅色调
+  (基于 --color-accent 色相的浅色浅灰蓝),不再与 --color-border 同值,
+  解决 Skills 卡片边框与 pill 标签背景视觉混淆的问题。
 
 ## 装饰手法(大幅简化,替换之前所有复杂规则)
 - 卡片:白底,0.5px 边框,轻微圆角(12-14px),hover 时
