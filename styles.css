@@ -2,12 +2,14 @@
 
 :root {
   /* 色板(锁定,见 CLAUDE.md) */
-  --color-bg: #F5F5F7;
+  --color-bg: #FAF6F0;
   --color-surface: #FFFFFF;
-  --color-text-primary: #1D1D1F;
-  --color-text-secondary: #6E6E73;
-  --color-accent: #0071E3;
-  --color-border: #D2D2D7;
+  --color-text-primary: #2B2621;
+  --color-text-secondary: #6E6259;
+  --color-accent: #3F76A0;
+  --color-accent-soft: #EAF4FB;
+  --color-accent-on-soft: #2F5A78;
+  --color-border: #DED7CC;
 
   /* 响应式断点参考值(注:媒体查询条件本身不能用 var(),下方 @media
      仍需写字面量,这里只作为断点数值的单一文档来源) */
@@ -121,9 +123,8 @@ body {
   margin: 0 0 12px;
   padding: 6px 16px;
   border-radius: 999px;
-  /* --color-accent(#0071E3)的 10% 透明度衬底,仅用于此徽标背景,不新增色板变量 */
-  background-color: rgba(0, 113, 227, 0.1);
-  color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-on-soft);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.3px;
@@ -212,7 +213,8 @@ body {
 .btn-pill:hover,
 .btn-pill:focus-visible {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 113, 227, 0.25);
+  /* --color-accent(#3F76A0)的 25% 透明度阴影,呼应按钮背景色 */
+  box-shadow: 0 6px 16px rgba(63, 118, 160, 0.25);
 }
 
 .btn-pill:active {

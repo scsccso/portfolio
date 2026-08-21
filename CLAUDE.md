@@ -42,10 +42,11 @@
 --color-surface: #FFFFFF;         /* 卡片/容器色,纯白,与奶白背景形成层次 */
 --color-text-primary: #2B2621;    /* 深咖啡棕,替代纯黑,更柔和 */
 --color-text-secondary: #6E6259;  /* 次要文字,暖灰色调 */
---color-accent: #5B8FB9;          /* 天空蓝,用于实心按钮/CTA,饱和度足够
-                                      撑住白色文字对比度 */
---color-accent-soft: #EAF4FB;     /* 淡天空蓝,用于标签底色、装饰性区块,
-                                      不承载白色文字,营造"淡淡的"视觉效果 */
+--color-accent: #3F76A0;          /* 加深版天空蓝,用于实心按钮/CTA背景,
+                                      白色文字对比度约 4.9:1,符合 AA 标准 */
+--color-accent-soft: #EAF4FB;     /* 淡天空蓝,标签底色/装饰性区块,维持不变 */
+--color-accent-on-soft: #2F5A78;  /* 淡蓝底上使用的强调色文字(如 eyebrow 徽章),
+                                      对比度约 6.6:1,符合 AA 标准 */
 --color-border: #DED7CC;          /* 暖灰色边框,呼应奶白色调,非冷灰 */
 ```
 
