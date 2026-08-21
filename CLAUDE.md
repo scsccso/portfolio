@@ -38,29 +38,49 @@
 ## 色板(写死为 CSS 变量,不允许在组件里散落硬编码色值)
 
 ```css
---color-bg: #F5F5F7;              /* 背景色 */
---color-surface: #FFFFFF;         /* 卡片/容器色 */
---color-text-primary: #1D1D1F;    /* 主文字色 */
---color-text-secondary: #6E6E73;  /* 次要文字色 */
---color-accent: #0071E3;          /* 强调色(链接/按钮/hover状态) */
---color-border: #D2D2D7;          /* 分割线/边框色 */
+--color-bg: #F5F5F7;
+--color-surface: #FFFFFF;
+--color-text-primary: #1D1D1F;
+--color-text-secondary: #6E6E73;
+--color-accent: #0071E3;
+--color-border: #D2D2D7;
 ```
 
-## 响应式断点
+## 排版层级(新增,已锁定)
+
+- 各 section 主标题(如 Hero 姓名、Featured Project 标题)字号提升至 32-40px,font-weight 600,letter-spacing 轻微收紧(-0.3px ~ -0.5px),制造第一眼冲击力
+- 正文段落中的关键词允许用 --color-text-primary + font-weight 600 局部加粗高亮,不需要整段平铺,但不允许滥用,每段最多高亮 1-2 处
+- 数据类信息(如项目数量、功能交付数量等,必须是简历/用户提供的真实数字,不可虚构)可做成独立的 metrics 数字条,大字号数字(24-28px, weight 600)+ 小字说明(13px, --color-text-secondary),横向排列,配合上下 border 分隔线
+
+## 卡片视觉技法(新增,已锁定)
+
+- 允许在卡片角落使用超大号(40-48px)、低对比度(背景色 --color-bg 同色或更浅)的装饰性数字/序号(如 01/02/03),作为背景层视觉元素,不遮挡主要内容,z-index 层级需保证正文文字在数字之上
+- 卡片圆角可提升至 12-14px,hover 状态允许 translateY(-3px ~ -4px) 上浮 + box-shadow 加深(轻微,不使用夸张阴影),transition 保持简单过渡
+- CTA 按钮(如"查看仓库")允许使用实心圆角胶囊(pill)样式:background: var(--color-accent),文字白色,border-radius ≥ 20px,hover 时允许轻微 transform 或 box-shadow 反馈
+
+## 滚动交互(新增,已锁定)
+
+- 允许使用原生 JS(Intersection Observer API,不引入第三方库)实现 section 进入视口时的淡入 + 轻微上移动效(opacity 0→1 配合 translateY(12px→0),duration 300-500ms,ease-out)
+- metrics 数字条中的数字允许配合滚动触发做数字递增动画(从 0 数到目标值),同样只用原生 JS 实现,不引入动画库
+- 以上滚动动效必须保持克制,不允许弹跳(bounce)、旋转、缩放溢出等夸张效果,且需在 prefers-reduced-motion: reduce 时自动禁用或大幅简化
+
+## 明确不允许的技法(维持原规则,未变更)
+
+- 严禁 Apple Liquid Glass 或任何 backdrop-filter + SVG 折射畸变效果(性能开销大且非 Chromium 浏览器支持不一致,与本项目"眼前一亮但克制"的定位不符)
+- 严禁套用任何原生 App 专属组件规范(Tab Bar、Navigation Bar、Sheet、watchOS/visionOS 专属控件、SF Symbols 图标系统)
+- 严禁使用渐变(gradient)背景、噪点纹理、发光(glow)特效
+
+## 响应式断点(维持原规则,未变更)
 
 - 桌面: ≥1024px
 - 平板: 768px–1023px
 - 手机: <768px
 
-## 手机端硬性要求(不可省略)
+## 手机端硬性要求(维持原规则,未变更)
 
 - 导航必须改为汉堡菜单或底部固定导航,禁止把桌面横向导航直接等比缩小
 - 项目卡片改为单列堆叠,不允许横向滚动或多列挤压
-- 正文字号不低于 16px(低于 16px 会触发 iOS Safari 自动放大聚焦,体验很差)
-
-## 交互反馈要求
-
-所有可点击元素(按钮、链接、导航项、卡片)必须有明确的 hover / active / focus 状态反馈。避免使用过度装饰性的动画(禁止用夸张的弹跳、旋转、粒子效果等),保持 Apple 风格的克制感,过渡使用简单的 transition,不用复杂的关键帧动画。
+- 正文字号不低于 16px
 
 ---
 
