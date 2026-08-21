@@ -38,12 +38,15 @@
 ## 色板(写死为 CSS 变量,不允许在组件里散落硬编码色值)
 
 ```css
---color-bg: #F5F5F7;
---color-surface: #FFFFFF;
---color-text-primary: #1D1D1F;
---color-text-secondary: #6E6E73;
---color-accent: #0071E3;
---color-border: #D2D2D7;
+--color-bg: #FAF6F0;              /* 奶白色背景,带暖调,非冷白 */
+--color-surface: #FFFFFF;         /* 卡片/容器色,纯白,与奶白背景形成层次 */
+--color-text-primary: #2B2621;    /* 深咖啡棕,替代纯黑,更柔和 */
+--color-text-secondary: #6E6259;  /* 次要文字,暖灰色调 */
+--color-accent: #5B8FB9;          /* 天空蓝,用于实心按钮/CTA,饱和度足够
+                                      撑住白色文字对比度 */
+--color-accent-soft: #EAF4FB;     /* 淡天空蓝,用于标签底色、装饰性区块,
+                                      不承载白色文字,营造"淡淡的"视觉效果 */
+--color-border: #DED7CC;          /* 暖灰色边框,呼应奶白色调,非冷灰 */
 ```
 
 ## 排版层级(新增,已锁定)
