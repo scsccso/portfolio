@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- TODO: SEO / Open Graph 标签,待与用户确认后添加(见 CLAUDE.md「尚未锁定事项」) -->
+  <!-- TODO: 姓名文案确定后更新 <title> -->
+  <title>Portfolio</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header id="site-header">
+    <nav id="site-nav" class="site-nav">
+      <div class="nav-container">
+        <a href="#hero" id="nav-brand-mount" class="nav-brand"></a>
+
+        <button
+          id="nav-toggle"
+          class="nav-toggle"
+          type="button"
+          aria-label="Toggle navigation menu"
+          aria-expanded="false"
+          aria-controls="nav-links"
+        >
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+        </button>
+
+        <ul id="nav-links" class="nav-links"></ul>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section id="hero" class="section section-hero">
+      <div id="hero-mount" class="mount"></div>
+    </section>
+
+    <section id="about" class="section section-about">
+      <div id="about-mount" class="mount"></div>
+    </section>
+
+    <section id="skills" class="section section-skills">
+      <div id="skills-mount" class="mount"></div>
+    </section>
+
+    <section id="project" class="section section-project">
+      <div id="project-mount" class="mount"></div>
+    </section>
+
+    <section id="experience" class="section section-experience">
+      <div id="experience-mount" class="mount"></div>
+    </section>
+
+    <section id="contact" class="section section-contact">
+      <div id="contact-mount" class="mount"></div>
+    </section>
+  </main>
+
+  <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释与本次回复总结 -->
+  <script src="content.js"></script>
+  <script src="render.js"></script>
+</body>
+</html>

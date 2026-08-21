@@ -1,0 +1,171 @@
+/* styles.css — 所有样式。颜色/断点统一走 CSS 变量,禁止在组件里散落硬编码色值。 */
+
+:root {
+  /* 色板(锁定,见 CLAUDE.md) */
+  --color-bg: #F5F5F7;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #1D1D1F;
+  --color-text-secondary: #6E6E73;
+  --color-accent: #0071E3;
+  --color-border: #D2D2D7;
+
+  /* 响应式断点参考值(注:媒体查询条件本身不能用 var(),下方 @media
+     仍需写字面量,这里只作为断点数值的单一文档来源) */
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+/* ---------- 导航栏(基础 sticky 定位;汉堡菜单完整交互后续实现) ---------- */
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  position: relative;
+}
+
+.nav-brand {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.nav-links a:hover,
+.nav-links a:focus-visible {
+  color: var(--color-accent);
+}
+
+.nav-links a:active {
+  opacity: 0.8;
+}
+
+/* 手机端汉堡按钮:桌面默认隐藏,容器结构先留好,交互逻辑后续实现 */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.nav-toggle:hover,
+.nav-toggle:focus-visible {
+  opacity: 0.7;
+}
+
+.nav-toggle-bar {
+  width: 20px;
+  height: 2px;
+  background-color: var(--color-text-primary);
+}
+
+/* ---------- 页面结构基础 ---------- */
+
+.section {
+  padding: 80px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.mount {
+  min-height: 1px;
+}
+
+/* ---------- 通用交互元素:hover / active / focus 状态(克制的 transition) ---------- */
+
+.cta-button {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 8px;
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.cta-button:hover,
+.cta-button:focus-visible {
+  opacity: 0.85;
+}
+
+.cta-button:active {
+  opacity: 0.7;
+}
+
+/* ============================================================
+   响应式断点骨架(三档)。具体规则留待各模块视觉细化时再填充。
+   ============================================================ */
+
+/* 手机: <768px */
+@media (max-width: 767px) {
+  .nav-toggle {
+    display: flex;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    padding: 16px 24px;
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .nav-links.is-open {
+    display: flex;
+  }
+}
+
+/* 平板: 768px–1023px */
+@media (min-width: 768px) and (max-width: 1023px) {
+}
+
+/* 桌面: ≥1024px */
+@media (min-width: 1024px) {
+}
