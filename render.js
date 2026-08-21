@@ -84,15 +84,18 @@ function renderProject() {
   const { name, description, stack, githubUrl, highlights } = content.project;
 
   mount.innerHTML = `
-    <h2>Featured Project — ${name}</h2>
-    <p>${description}</p>
-    <ul class="stack-tags">${stack.map((tech) => `<li>${tech}</li>`).join("")}</ul>
-    <a href="${githubUrl}" target="_blank" rel="noopener">GitHub</a>
-    <div class="project-highlights">
+    <h2 class="section-title">Featured Project — ${name}</h2>
+    <p class="project-description">${description}</p>
+    <ul class="stack-tags">
+      ${stack.map((tech) => `<li class="stack-tag">${tech}</li>`).join("")}
+    </ul>
+    <a class="btn-pill" href="${githubUrl}" target="_blank" rel="noopener">GitHub</a>
+    <div class="highlights-grid">
       ${highlights
         .map(
-          (h) => `
-        <div class="highlight">
+          (h, index) => `
+        <div class="highlight-card">
+          <span class="highlight-card-number" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
           <h3>${h.title}</h3>
           <p>${h.description}</p>
         </div>
