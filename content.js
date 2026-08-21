@@ -4,8 +4,8 @@
 
 const content = {
   sidebar: {
-    name: "// TODO: 待用户提供姓名",
-    role: "// TODO: 待用户提供职位定位",
+    name: "Ong Shan Chun",
+    role: "Software Engineer · Backend-Focused",
     // TODO: 头像图片路径,视觉素材来源未定(见 CLAUDE.md「尚未锁定事项」)。
     // 为 null 时 render.js 渲染占位图标。
     avatar: null,
