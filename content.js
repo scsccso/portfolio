@@ -12,8 +12,9 @@ const content = {
   },
 
   about: {
-    // TODO: 待用户提供 3-4 句自我介绍(不得照搬简历原文措辞或结构)
-    paragraphs: ["// TODO: 待用户提供 About 文案"],
+    paragraphs: [
+      "I'm a software engineer with a Bachelor's degree in Software Systems Development. My focus is on backend systems and service architecture, primarily working with Java and Spring Boot to build reliable, well-structured APIs. I'm comfortable working across the full stack when a project calls for it, and I care about writing code that holds up under real-world conditions — correct, tested, and maintainable long after the first release.",
+    ],
   },
 
   skills: {
