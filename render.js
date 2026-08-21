@@ -40,10 +40,10 @@ function renderHero() {
   const { name, role, tagline, cta } = content.hero;
 
   mount.innerHTML = `
-    <h1>${name}</h1>
-    <p class="hero-role">${role}</p>
+    <span class="eyebrow-badge">${role}</span>
+    <h1 class="section-title">${name}</h1>
     <p class="hero-tagline">${tagline}</p>
-    <a class="cta-button" href="${cta.href}">${cta.label}</a>
+    <a class="btn-pill" href="${cta.href}">${cta.label}</a>
   `;
 }
 
@@ -81,11 +81,23 @@ function renderSkills() {
 function renderProject() {
   const mount = document.getElementById("project-mount");
   if (!mount) return;
-  const { name, description, stack, githubUrl, highlights } = content.project;
+  const { name, description, stack, githubUrl, highlights, metrics } = content.project;
 
   mount.innerHTML = `
     <h2 class="section-title">Featured Project — ${name}</h2>
     <p class="project-description">${description}</p>
+    <div class="metrics-strip">
+      ${metrics
+        .map(
+          (m) => `
+        <div class="metric">
+          <span class="metric-value" data-target="${m.value}" data-suffix="${m.suffix}">0${m.suffix}</span>
+          <span class="metric-label">${m.label}</span>
+        </div>
+      `
+        )
+        .join("")}
+    </div>
     <ul class="stack-tags">
       ${stack.map((tech) => `<li class="stack-tag">${tech}</li>`).join("")}
     </ul>
@@ -141,6 +153,81 @@ function renderContact() {
   `;
 }
 
+function initScrollReveal() {
+  const revealTargets = document.querySelectorAll(".section:not(.section-hero)");
+  if (!revealTargets.length) return;
+
+  revealTargets.forEach((el) => el.classList.add("reveal"));
+
+  if (!("IntersectionObserver" in window)) {
+    revealTargets.forEach((el) => el.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          obs.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.15 }
+  );
+
+  revealTargets.forEach((el) => observer.observe(el));
+}
+
+function initMetricsCountUp() {
+  const metricEls = document.querySelectorAll(".metric-value");
+  if (!metricEls.length) return;
+
+  const showFinalValue = (el) => {
+    el.textContent = `${el.dataset.target}${el.dataset.suffix || ""}`;
+  };
+
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  if (prefersReducedMotion || !("IntersectionObserver" in window)) {
+    metricEls.forEach(showFinalValue);
+    return;
+  }
+
+  const animateCount = (el) => {
+    const target = Number(el.dataset.target);
+    const suffix = el.dataset.suffix || "";
+    const duration = 800;
+    const startTime = performance.now();
+
+    const step = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      el.textContent = `${Math.round(target * progress)}${suffix}`;
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  };
+
+  const observer = new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          animateCount(entry.target);
+          obs.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.5 }
+  );
+
+  metricEls.forEach((el) => observer.observe(el));
+}
+
 function renderPage() {
   renderNav();
   initMobileNavToggle();
@@ -150,6 +237,8 @@ function renderPage() {
   renderProject();
   renderExperience();
   renderContact();
+  initScrollReveal();
+  initMetricsCountUp();
 }
 
 // 本文件通过 <script src="render.js"> 加载,不使用 type="module":

@@ -114,28 +114,30 @@ body {
   min-height: 1px;
 }
 
-/* ---------- 通用交互元素:hover / active / focus 状态(克制的 transition) ---------- */
+/* ---------- Hero ---------- */
 
-.cta-button {
+.eyebrow-badge {
   display: inline-block;
-  padding: 12px 24px;
-  border-radius: 8px;
-  background-color: var(--color-accent);
-  color: var(--color-surface);
-  text-decoration: none;
-  transition: opacity 0.2s ease;
+  margin: 0 0 12px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  /* --color-accent(#0071E3)的 10% 透明度衬底,仅用于此徽标背景,不新增色板变量 */
+  background-color: rgba(0, 113, 227, 0.1);
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
-.cta-button:hover,
-.cta-button:focus-visible {
-  opacity: 0.85;
+.hero-tagline {
+  margin: 12px 0 28px;
+  max-width: 640px;
+  font-size: 17px;
+  color: var(--color-text-secondary);
 }
 
-.cta-button:active {
-  opacity: 0.7;
-}
-
-/* ---------- Featured Project — CineVerse(排版层级 + 卡片视觉技法) ---------- */
+/* ---------- Featured Project — CineVerse(排版层级 + 卡片视觉技法)
+   .section-title 与 .btn-pill 是通用组件,Hero 区块也在复用 ---------- */
 
 .section-title {
   margin: 0 0 16px;
@@ -146,6 +148,33 @@ body {
 
 .project-description {
   max-width: 720px;
+  color: var(--color-text-secondary);
+}
+
+.metrics-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  margin: 24px 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-value {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.metric-label {
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 
@@ -240,6 +269,23 @@ body {
   margin: 0;
   color: var(--color-text-secondary);
   font-size: 14px;
+}
+
+/* ---------- 滚动淡入(与 render.js 的 IntersectionObserver 配合使用)
+   .reveal 的初始隐藏状态包在 prefers-reduced-motion: no-preference 里,
+   开启了「减少动态效果」的用户会直接看到完整内容,没有位移/透明度变化。 ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================================

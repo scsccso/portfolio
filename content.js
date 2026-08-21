@@ -55,6 +55,11 @@ const content = {
       "Stripe API",
     ],
     githubUrl: "https://github.com/scsccso/cineverse",
+    // 以下两项为用户在本轮提供的真实数据,非占位符
+    metrics: [
+      { value: 25, suffix: "+", label: "功能交付" },
+      { value: 20, suffix: "+", label: "后台管理页面" },
+    ],
     highlights: [
       {
         title: "Redis 分布式锁防止并发超卖/双重预订",
