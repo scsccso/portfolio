@@ -69,7 +69,7 @@ function renderSkills() {
           (category) => `
         <div class="skills-category">
           <h3>${category.title}</h3>
-          <ul>${category.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+          <ul class="stack-tags">${category.items.map((item) => `<li class="stack-tag">${item}</li>`).join("")}</ul>
         </div>
       `
         )

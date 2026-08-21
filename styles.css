@@ -137,6 +137,42 @@ body {
   color: var(--color-text-secondary);
 }
 
+/* ---------- Skills(Bento Grid + 微光质感,见 CLAUDE.md「设计参照」
+   信息密集场景一节。不规则分栏比例见下方响应式断点里的 nth-child 规则,
+   仅桌面断点生效。) ---------- */
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.skills-category {
+  padding: 28px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-accent-soft) 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.skills-category:hover,
+.skills-category:focus-within {
+  /* 光晕:--color-accent(#3F76A0)低透明度值,呼应 .btn-pill 的写法 */
+  box-shadow: 0 0 0 1px rgba(63, 118, 160, 0.18), 0 10px 28px rgba(63, 118, 160, 0.2);
+}
+
+.skills-category h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.skills-category .stack-tags {
+  margin: 0;
+}
+
 /* ---------- Featured Project — CineVerse(排版层级 + 卡片视觉技法)
    .section-title 与 .btn-pill 是通用组件,Hero 区块也在复用 ---------- */
 
@@ -223,7 +259,7 @@ body {
 
 .highlights-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 24px;
 }
 
@@ -240,7 +276,11 @@ body {
 .highlight-card:hover,
 .highlight-card:focus-within {
   transform: translateY(-4px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  /* 光晕:--color-accent(#3F76A0)低透明度值,叠加在原有 lift 阴影之上 */
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(63, 118, 160, 0.15),
+    0 10px 28px rgba(63, 118, 160, 0.18);
 }
 
 .highlight-card-number {
@@ -292,6 +332,8 @@ body {
 
 /* ============================================================
    响应式断点骨架(三档)。具体规则留待各模块视觉细化时再填充。
+   Bento 不规则分栏(nth-child span)只在桌面断点声明,平板/手机
+   回退为规则等宽栏——小断点从未设置过 span,不需要额外重置。
    ============================================================ */
 
 /* 手机: <768px */
@@ -316,6 +358,10 @@ body {
     display: flex;
   }
 
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+
   .highlights-grid {
     grid-template-columns: 1fr;
   }
@@ -323,6 +369,10 @@ body {
 
 /* 平板: 768px–1023px */
 @media (min-width: 768px) and (max-width: 1023px) {
+  .skills-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .highlights-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -330,7 +380,20 @@ body {
 
 /* 桌面: ≥1024px */
 @media (min-width: 1024px) {
-  .highlights-grid {
+  .skills-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .skills-category:nth-child(1),
+  .skills-category:nth-child(4) {
+    grid-column: span 2;
+  }
+
+  .highlights-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .highlight-card:nth-child(1) {
+    grid-column: span 2;
   }
 }

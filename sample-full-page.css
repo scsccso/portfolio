@@ -1,0 +1,76 @@
+/* sample-full-page.css — 仅供 sample-full-page.html 预览使用。
+   Nav / .section-title / .eyebrow-badge / .btn-pill / .hero-tagline /
+   Featured Project 卡片(.metrics-strip / .stack-tags / .highlights-grid 等)/
+   Skills 卡片(.skills-grid / .skills-category)/ .reveal 滚动淡入,
+   均已在真实 styles.css 里实现,这里直接复用,不重复定义。
+   本文件只补 About / Experience / Contact 目前还没有专属样式的部分。 */
+
+/* ---------- About ---------- */
+
+.section-about p {
+  max-width: 720px;
+  margin: 0 0 16px;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- Work Experience(叙述性呈现,非卡片堆砌) ---------- */
+
+.experience-item {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.experience-item:last-child {
+  border-bottom: none;
+}
+
+.experience-item h3 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.experience-role {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.experience-item > p:last-child {
+  max-width: 720px;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- Contact ---------- */
+
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.contact-link {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.contact-link:hover,
+.contact-link:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.contact-link:active {
+  transform: translateY(0);
+}
