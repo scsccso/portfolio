@@ -11,6 +11,9 @@
   --color-accent-on-soft: #2F5A78;
   --color-border: #DED7CC;
 
+  /* 布局尺寸 */
+  --sidebar-width: 260px;
+
   /* 响应式断点参考值(注:媒体查询条件本身不能用 var(),下方 @media
      仍需写字面量,这里只作为断点数值的单一文档来源) */
   --breakpoint-tablet: 768px;
@@ -29,58 +32,108 @@ body {
   line-height: 1.5;
 }
 
-/* ---------- 导航栏(基础 sticky 定位;汉堡菜单完整交互后续实现) ---------- */
+.mount {
+  min-height: 1px;
+}
 
-.site-nav {
+/* ---------- 整体布局:侧边栏 + 主内容区(桌面默认并排,移动端见底部断点) ---------- */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- 侧边栏 ---------- */
+
+.sidebar {
   position: sticky;
   top: 0;
-  z-index: 100;
+  align-self: flex-start;
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  height: 100vh;
+  overflow-y: auto;
+  padding: 40px 24px;
   background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  text-align: center;
 }
 
-.nav-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
+.sidebar-avatar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  position: relative;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-on-soft);
 }
 
-.nav-brand {
-  color: var(--color-text-primary);
-  text-decoration: none;
+.sidebar-avatar svg,
+.sidebar-avatar img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.sidebar-name {
+  margin: 0 0 12px;
+  font-size: 21px;
   font-weight: 600;
 }
 
-.nav-links {
+.sidebar-role {
+  margin: 0 auto 20px;
+  width: fit-content;
+}
+
+.sidebar-contacts {
   display: flex;
-  gap: 24px;
+  justify-content: center;
+  gap: 10px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.nav-links a {
+.sidebar-contact-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
-  text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.nav-links a:hover,
-.nav-links a:focus-visible {
+.sidebar-contact-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-contact-link:hover,
+.sidebar-contact-link:focus-visible {
   color: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
 }
 
-.nav-links a:active {
-  opacity: 0.8;
+.sidebar-contact-link:active {
+  transform: translateY(0);
 }
 
-/* 手机端汉堡按钮:桌面默认隐藏,容器结构先留好,交互逻辑后续实现 */
-.nav-toggle {
+/* 移动端汉堡按钮:桌面默认隐藏,<768px 断点下显示(见文件底部) */
+.sidebar-toggle {
   display: none;
   flex-direction: column;
   justify-content: center;
@@ -93,34 +146,92 @@ body {
   padding: 8px;
 }
 
-.nav-toggle:hover,
-.nav-toggle:focus-visible {
+.sidebar-toggle:hover,
+.sidebar-toggle:focus-visible {
   opacity: 0.7;
 }
 
-.nav-toggle-bar {
+.sidebar-toggle-bar {
   width: 20px;
   height: 2px;
   background-color: var(--color-text-primary);
 }
 
-/* ---------- 页面结构基础 ---------- */
+/* ---------- Tab 导航 ---------- */
 
-.section {
-  padding: 80px 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+.tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.mount {
-  min-height: 1px;
+.tab-list {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+  margin: 0;
+  padding: 0 40px;
+  overflow-x: auto;
 }
 
-/* ---------- Hero ---------- */
+.tab-link {
+  display: inline-block;
+  padding: 18px 2px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.tab-link:hover,
+.tab-link:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.tab-link.is-active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.tab-link:active {
+  opacity: 0.8;
+}
+
+/* ---------- Tab 面板:JS 通过 .is-active 切换显示/隐藏,不做滚动锚点跳转 ---------- */
+
+.tab-panel {
+  display: none;
+  padding: 40px;
+  max-width: 1000px;
+}
+
+.tab-panel.is-active {
+  display: block;
+}
+
+.tab-panel p {
+  max-width: 720px;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- 通用组件:标题 / 卡片 / pill 标签 / 按钮 ---------- */
+
+.section-title {
+  margin: 0 0 20px;
+  font-size: clamp(28px, 3vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
 
 .eyebrow-badge {
   display: inline-block;
-  margin: 0 0 12px;
   padding: 6px 16px;
   border-radius: 999px;
   background-color: var(--color-accent-soft);
@@ -130,37 +241,101 @@ body {
   letter-spacing: 0.3px;
 }
 
-.hero-tagline {
-  margin: 12px 0 28px;
-  max-width: 640px;
-  font-size: 17px;
-  color: var(--color-text-secondary);
+/* 卡片:白底 + 0.5px 边框 + 轻微圆角,hover 时上浮 + 阴影加深,仅此而已
+   (不使用背景渐变/发光/倾斜跟随,见 CLAUDE.md「装饰手法」) */
+.card {
+  position: relative;
+  padding: 24px;
+  border-radius: 14px;
+  border: 0.5px solid var(--color-border);
+  background-color: var(--color-surface);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* ---------- Skills(Bento Grid + 微光质感,见 CLAUDE.md「设计参照」
-   信息密集场景一节。不规则分栏比例见下方响应式断点里的 nth-child 规则,
-   仅桌面断点生效。) ---------- */
+.card:hover,
+.card:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* 卡片角落装饰数字:低对比度,不遮挡内容 */
+.card-number {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  z-index: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-border);
+  pointer-events: none;
+  user-select: none;
+}
+
+.card h3,
+.card p {
+  position: relative;
+  z-index: 1;
+}
+
+.stack-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 20px 0;
+  padding: 0;
+}
+
+.stack-tag {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-on-soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-pill {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.btn-pill:hover,
+.btn-pill:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(63, 118, 160, 0.25);
+}
+
+.btn-pill:active {
+  transform: translateY(0);
+}
+
+.btn-pill-outline {
+  background-color: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.btn-pill-outline:hover,
+.btn-pill-outline:focus-visible {
+  background-color: var(--color-accent-soft);
+  box-shadow: none;
+}
+
+/* ---------- Skills:等宽网格卡片,不使用不规则 bento 拼接 ---------- */
 
 .skills-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-top: 24px;
-}
-
-.skills-category {
-  padding: 28px;
-  border-radius: 14px;
-  border: 1px solid var(--color-border);
-  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-accent-soft) 100%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.2s ease;
-}
-
-.skills-category:hover,
-.skills-category:focus-within {
-  /* 光晕:--color-accent(#3F76A0)低透明度值,呼应 .btn-pill 的写法 */
-  box-shadow: 0 0 0 1px rgba(63, 118, 160, 0.18), 0 10px 28px rgba(63, 118, 160, 0.2);
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
 }
 
 .skills-category h3 {
@@ -173,195 +348,120 @@ body {
   margin: 0;
 }
 
-/* ---------- Featured Project — CineVerse(排版层级 + 卡片视觉技法)
-   .section-title 与 .btn-pill 是通用组件,Hero 区块也在复用 ---------- */
+/* ---------- Project — CineVerse ---------- */
 
-.section-title {
-  margin: 0 0 16px;
-  font-size: clamp(32px, 4vw, 40px);
-  font-weight: 600;
-  letter-spacing: -0.4px;
-}
-
-.project-description {
-  max-width: 720px;
-  color: var(--color-text-secondary);
-}
-
-.metrics-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
-  margin: 24px 0;
-  padding: 20px 0;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.metric {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.metric-value {
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.metric-label {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.stack-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
-  margin: 24px 0;
-  padding: 0;
-}
-
-.stack-tag {
-  display: inline-block;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-primary);
-  font-size: 14px;
-}
-
-.btn-pill {
-  display: inline-block;
-  margin-bottom: 40px;
-  padding: 10px 24px;
-  border-radius: 999px;
-  background-color: var(--color-accent);
-  color: var(--color-surface);
-  text-decoration: none;
-  font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.btn-pill:hover,
-.btn-pill:focus-visible {
-  transform: translateY(-2px);
-  /* --color-accent(#3F76A0)的 25% 透明度阴影,呼应按钮背景色 */
-  box-shadow: 0 6px 16px rgba(63, 118, 160, 0.25);
-}
-
-.btn-pill:active {
-  transform: translateY(0);
+.project-cta {
+  margin: 8px 0 32px;
 }
 
 .highlights-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-}
-
-.highlight-card {
-  position: relative;
-  padding: 24px;
-  border-radius: 14px;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.highlight-card:hover,
-.highlight-card:focus-within {
-  transform: translateY(-4px);
-  /* 光晕:--color-accent(#3F76A0)低透明度值,叠加在原有 lift 阴影之上 */
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(63, 118, 160, 0.15),
-    0 10px 28px rgba(63, 118, 160, 0.18);
-}
-
-.highlight-card-number {
-  position: absolute;
-  top: 8px;
-  right: 16px;
-  z-index: 0;
-  font-size: 44px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--color-bg);
-  pointer-events: none;
-  user-select: none;
-}
-
-.highlight-card h3,
-.highlight-card p {
-  position: relative;
-  z-index: 1;
 }
 
 .highlight-card h3 {
   margin: 0 0 8px;
+  padding-right: 40px;
   font-size: 17px;
 }
 
 .highlight-card p {
   margin: 0;
-  color: var(--color-text-secondary);
   font-size: 14px;
 }
 
-/* ---------- 滚动淡入(与 render.js 的 IntersectionObserver 配合使用)
-   .reveal 的初始隐藏状态包在 prefers-reduced-motion: no-preference 里,
-   开启了「减少动态效果」的用户会直接看到完整内容,没有位移/透明度变化。 ---------- */
+/* ---------- Experience:简洁时间线列表 ---------- */
 
-@media (prefers-reduced-motion: no-preference) {
-  .reveal {
-    opacity: 0;
-    transform: translateY(12px);
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-  }
+.experience-item {
+  padding: 4px 0 24px 20px;
+  border-left: 2px solid var(--color-border);
+}
 
-  .reveal.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.experience-item h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.experience-role {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- Contact ---------- */
+
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
 }
 
 /* ============================================================
-   响应式断点骨架(三档)。具体规则留待各模块视觉细化时再填充。
-   Bento 不规则分栏(nth-child span)只在桌面断点声明,平板/手机
-   回退为规则等宽栏——小断点从未设置过 span,不需要额外重置。
+   响应式断点(三档)
    ============================================================ */
 
-/* 手机: <768px */
+/* 手机: <768px —— 侧边栏收起为顶部可展开区域,汉堡按钮控制展开/收起 */
 @media (max-width: 767px) {
-  .nav-toggle {
-    display: flex;
-  }
-
-  .nav-links {
-    display: none;
+  .layout {
     flex-direction: column;
-    position: absolute;
-    top: 64px;
-    left: 0;
-    right: 0;
-    padding: 16px 24px;
-    background-color: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
   }
 
-  .nav-links.is-open {
+  .sidebar {
+    flex: 0 0 auto;
+    position: relative;
+    top: auto;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    padding: 20px 56px 20px 20px;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .sidebar-toggle {
+    display: flex;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+  }
+
+  .sidebar-avatar,
+  .sidebar-contacts {
+    display: none;
+  }
+
+  .sidebar.is-open .sidebar-avatar {
     display: flex;
   }
 
-  .skills-grid {
-    grid-template-columns: 1fr;
+  .sidebar.is-open .sidebar-contacts {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 16px;
   }
 
+  .sidebar-name {
+    font-size: 19px;
+  }
+
+  .sidebar-role {
+    margin: 0;
+  }
+
+  .tab-list {
+    gap: 20px;
+    padding: 0 20px;
+  }
+
+  .tab-panel {
+    padding: 24px 20px;
+  }
+
+  .skills-grid,
   .highlights-grid {
     grid-template-columns: 1fr;
   }
@@ -375,25 +475,5 @@ body {
 
   .highlights-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* 桌面: ≥1024px */
-@media (min-width: 1024px) {
-  .skills-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .skills-category:nth-child(1),
-  .skills-category:nth-child(4) {
-    grid-column: span 2;
-  }
-
-  .highlights-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  .highlight-card:nth-child(1) {
-    grid-column: span 2;
   }
 }

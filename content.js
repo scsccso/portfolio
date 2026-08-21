@@ -3,15 +3,12 @@
 // 已加 TODO 注释的字符串字段,需在拿到真实文案后原样替换。
 
 const content = {
-  hero: {
+  sidebar: {
     name: "// TODO: 待用户提供姓名",
     role: "// TODO: 待用户提供职位定位",
-    tagline: "// TODO: 待用户提供一句话简介",
-    cta: {
-      // TODO: 待确认 CTA 跳转目标——Projects 区块(#project)还是 CineVerse repo
-      label: "// TODO: 待用户提供 CTA 按钮文案",
-      href: "#project",
-    },
+    // TODO: 头像图片路径,视觉素材来源未定(见 CLAUDE.md「尚未锁定事项」)。
+    // 为 null 时 render.js 渲染占位图标。
+    avatar: null,
   },
 
   about: {
@@ -41,8 +38,8 @@ const content = {
   },
 
   project: {
-    // Featured Project — CineVerse(全站重点模块)
-    // 以下 name / stack / githubUrl / highlights[].title 已在 CLAUDE.md 中锁定,非占位符
+    // Featured Project — CineVerse
+    // 以下 name / stack / githubUrl / highlights[].title 已确认,非占位符
     name: "CineVerse",
     description: "// TODO: 待用户提供项目描述",
     stack: [
@@ -55,11 +52,6 @@ const content = {
       "Stripe API",
     ],
     githubUrl: "https://github.com/scsccso/cineverse",
-    // 以下两项为用户在本轮提供的真实数据,非占位符
-    metrics: [
-      { value: 25, suffix: "+", label: "功能交付" },
-      { value: 20, suffix: "+", label: "后台管理页面" },
-    ],
     highlights: [
       {
         title: "Redis 分布式锁防止并发超卖/双重预订",
@@ -77,7 +69,7 @@ const content = {
   },
 
   experience: {
-    // company 已在 CLAUDE.md 中锁定,非占位符;其余字段待用户提供
+    // company 已确认,非占位符;其余字段待用户提供
     positions: [
       {
         company: "Data Alliance Sdn Bhd",

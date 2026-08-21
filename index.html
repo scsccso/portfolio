@@ -9,56 +9,54 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header id="site-header">
-    <nav id="site-nav" class="site-nav">
-      <div class="nav-container">
-        <a href="#hero" id="nav-brand-mount" class="nav-brand"></a>
+  <div class="layout">
+    <aside id="sidebar" class="sidebar">
+      <button
+        id="sidebar-toggle"
+        class="sidebar-toggle"
+        type="button"
+        aria-label="Toggle sidebar menu"
+        aria-expanded="false"
+        aria-controls="sidebar-mount"
+      >
+        <span class="sidebar-toggle-bar"></span>
+        <span class="sidebar-toggle-bar"></span>
+        <span class="sidebar-toggle-bar"></span>
+      </button>
 
-        <button
-          id="nav-toggle"
-          class="nav-toggle"
-          type="button"
-          aria-label="Toggle navigation menu"
-          aria-expanded="false"
-          aria-controls="nav-links"
-        >
-          <span class="nav-toggle-bar"></span>
-          <span class="nav-toggle-bar"></span>
-          <span class="nav-toggle-bar"></span>
-        </button>
+      <div id="sidebar-mount" class="mount"></div>
+    </aside>
 
-        <ul id="nav-links" class="nav-links"></ul>
-      </div>
-    </nav>
-  </header>
+    <div class="content">
+      <nav id="tab-nav" class="tab-nav" role="tablist">
+        <ul id="tab-list" class="tab-list"></ul>
+      </nav>
 
-  <main>
-    <section id="hero" class="section section-hero">
-      <div id="hero-mount" class="mount"></div>
-    </section>
+      <main id="tab-panels" class="tab-panels">
+        <section id="panel-about" class="tab-panel" data-tab="about" role="tabpanel" aria-labelledby="tab-about">
+          <div id="about-mount" class="mount"></div>
+        </section>
 
-    <section id="about" class="section section-about">
-      <div id="about-mount" class="mount"></div>
-    </section>
+        <section id="panel-skills" class="tab-panel" data-tab="skills" role="tabpanel" aria-labelledby="tab-skills">
+          <div id="skills-mount" class="mount"></div>
+        </section>
 
-    <section id="skills" class="section section-skills">
-      <div id="skills-mount" class="mount"></div>
-    </section>
+        <section id="panel-project" class="tab-panel" data-tab="project" role="tabpanel" aria-labelledby="tab-project">
+          <div id="project-mount" class="mount"></div>
+        </section>
 
-    <section id="project" class="section section-project">
-      <div id="project-mount" class="mount"></div>
-    </section>
+        <section id="panel-experience" class="tab-panel" data-tab="experience" role="tabpanel" aria-labelledby="tab-experience">
+          <div id="experience-mount" class="mount"></div>
+        </section>
 
-    <section id="experience" class="section section-experience">
-      <div id="experience-mount" class="mount"></div>
-    </section>
+        <section id="panel-contact" class="tab-panel" data-tab="contact" role="tabpanel" aria-labelledby="tab-contact">
+          <div id="contact-mount" class="mount"></div>
+        </section>
+      </main>
+    </div>
+  </div>
 
-    <section id="contact" class="section section-contact">
-      <div id="contact-mount" class="mount"></div>
-    </section>
-  </main>
-
-  <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释与本次回复总结 -->
+  <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释 -->
   <script src="content.js"></script>
   <script src="render.js"></script>
 </body>
