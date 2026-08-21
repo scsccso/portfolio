@@ -58,6 +58,10 @@
 - 卡片圆角可提升至 12-14px,hover 状态允许 translateY(-3px ~ -4px) 上浮 + box-shadow 加深(轻微,不使用夸张阴影),transition 保持简单过渡
 - CTA 按钮(如"查看仓库")允许使用实心圆角胶囊(pill)样式:background: var(--color-accent),文字白色,border-radius ≥ 20px,hover 时允许轻微 transform 或 box-shadow 反馈
 
+## 交互反馈要求(维持原规则,未变更)
+
+所有可点击元素(按钮、链接、导航项、卡片)必须有明确的 hover / active / focus 状态反馈。避免使用过度装饰性的动画(禁止用夸张的弹跳、旋转、粒子效果等),保持 Apple 风格的克制感,过渡使用简单的 transition,不用复杂的关键帧动画。
+
 ## 滚动交互(新增,已锁定)
 
 - 允许使用原生 JS(Intersection Observer API,不引入第三方库)实现 section 进入视口时的淡入 + 轻微上移动效(opacity 0→1 配合 translateY(12px→0),duration 300-500ms,ease-out)
