@@ -509,13 +509,17 @@ body {
 }
 
 /* 卡片 <-> 面板的共享过渡目标。三个可展开模块各自的 view-transition-
-   name 由 render.js 按 `card-${moduleId}` 生成,这里统一声明动画曲线
-   (复用我们已经在用的弹性缓动),避免浏览器默认的线性 crossfade。 */
+   name 由 render.js 按 `card-${moduleId}` 生成,这里统一声明动画曲线,
+   避免浏览器默认的线性 crossfade。原先用的 cubic-bezier(0.34, 1.56,
+   0.64, 1) 控制点 y 值到 1.56,过冲幅度较大——宽高各自独立插值(不是
+   统一 scale),过冲在宽高上方向相反(宽收窄、高变高),实测会先收缩、
+   再弹回,观感偏"跳";换成 y 值只到 1.05 的版本,保留一点点弹性尾巴,
+   但去掉明显的"收缩再弹回"感。 */
 ::view-transition-group(card-cineverse),
 ::view-transition-group(card-skills),
 ::view-transition-group(card-experience) {
   animation-duration: 450ms;
-  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-timing-function: cubic-bezier(0.25, 1.05, 0.4, 1);
 }
 
 /* 新旧快照都用 contain 保持内容宽高比——卡片和面板的宽高比通常不同,
