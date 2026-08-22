@@ -23,12 +23,16 @@
     最前)。
 
     内容量较大的模块(Skills / Experience / CineVerse 技术亮点详情)可
-    点击展开:原卡片留在原地不动,只做简单的 opacity 淡出/淡入,不涉及
-    任何位移或形变;完整内容显示在一个独立的弹层里——每次点击都全新
-    创建、关闭动画结束后彻底从 DOM 移除,不是复用同一个持久元素隐藏/
-    显示。弹层不是原卡片本身,原卡片不需要 reparent、不需要处理"同一个
-    元素物理位移"这类复杂度(之前那套机制连续出过三次不同的视觉异常,
-    已放弃)。交互逻辑见 render.js。
+    点击展开:用浏览器原生 View Transitions API(document.startViewTransition
+    + view-transition-name)驱动"卡片变形为全屏面板"的过渡——卡片和
+    面板动态共享同一个 view-transition-name,浏览器自动拍摄前后快照并
+    插值动画,不需要手写 transform/opacity 同步逻辑。完整内容显示在一个
+    独立的弹层里,每次点击都全新创建、关闭后彻底从 DOM 移除(document.
+    createElement / remove(),不是复用同一个持久元素隐藏/显示)。原卡片
+    自身只是 visibility:hidden,不 reparent、不做任何手写位移或形变
+    (之前手写 FLIP 和手写弹层缩放两套机制先后都出过视觉异常,已放弃)。
+    不支持该 API 的浏览器会跳过动画直接切换 DOM,核心功能不受影响。
+    交互逻辑见 render.js。
   -->
   <main id="bento-grid" class="bento-grid">
     <section class="bento-card identity" id="card-identity" aria-label="Identity">

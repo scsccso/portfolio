@@ -226,72 +226,48 @@ const FULL_CONTENT_BUILDERS = {
   cineverse: buildProjectFullContent,
 };
 
-// ---------- 点击展开:交互逻辑(独立弹层架构) ----------
-// 之前用过"卡片本身 reparent 到 body + position:fixed + transform 实时
-// 变形"的 FLIP 机制,连续踩过三次不同的视觉异常(装饰数字被非均匀缩放
-// 压扁、内容交叉淡入淡出时序错位导致双重曝光、reparent 与过渡撞在同一
-// 个同步任务里导致透明度残留)——都是"同一个元素要在极短时间内做位移/
-// 形变/reparent 好几件事,还要互相咬合精确时序"这类复杂度带来的,不是
-// 孤立的小 bug,所以放弃这条路线,换成更简单、状态更少的架构:
+// ---------- 点击展开:交互逻辑(原生 View Transitions API) ----------
+// 用浏览器原生的 document.startViewTransition 替换上一版手写的"独立
+// 弹层缩放"实现(2026年主流浏览器——Chrome 111+/Safari 18+/Firefox
+// 144+——都已支持)。核心思路:给触发卡片和展开后的面板动态设置同一个
+// view-transition-name(按模块 id 生成,如 "card-cineverse"),浏览器
+// 就会把它们识别成同一个过渡目标,自动生成"从卡片位置/尺寸变形到面板
+// 位置/尺寸"的动画——快照捕捉、插值计算、动画播放全部交给浏览器自己的
+// 渲染管线,不需要我们手动读 getBoundingClientRect、算 translate/scale、
+// 安排 forceReflow/rAF 时序。
 //
-//   1. 原卡片自始至终留在原地(不 reparent、不做任何 transform),点击
-//      时只做一件事:opacity 淡出。淡出结束后仍然是同一个元素、同一个
-//      位置,没有任何"形变"这个维度需要担心。
-//   2. 完整内容显示在一个全新创建的独立弹层里(document.createElement,
-//      不是复用某个持久元素隐藏/显示)。弹层固定定位在屏幕正中央;
-//      展开动画只是让它从"卡片中心、缩小到 30%、透明"过渡到"屏幕
-//      中央、原始大小、不透明",用的是统一(而不是逐轴不同)的 scale,
-//      所以内容不会被压扁——这是从架构上避免装饰数字那类问题,不是
-//      靠猜时机去"赶在变形结束前躲开"。
-//   3. 关闭时弹层反向播放同一段动画,原卡片同时淡入;弹层的过渡结束后
-//      直接从 DOM 里彻底移除(remove(),不是隐藏),不会有"上一次开合
-//      忘记清空的内联样式"这类残留状态可以累积,因为下一次打开根本是
-//      全新的元素。
+// 之前几版手写实现踩过的坑,本质上都是"手动同步好几个时序敏感的步骤"
+// 带来的(装饰数字被非均匀缩放压扁、内容交叉淡入淡出时序错位、reparent
+// 和过渡撞在同一个同步任务里导致残留)——原生 API 把这些全部收进浏览器
+// 自己的渲染管线,不再是我们能出错、也不再是我们需要控制的部分:
+//   - 快照是浏览器对渲染结果拍的位图,插值只发生在 ::view-transition-
+//     old/new 这两张图的容器盒子上,盒子内部的图片用 object-fit 保持
+//     宽高比展示,内容本身永远不会被非均匀拉伸压扁。
+//   - 内容切换(摘要 → 完整内容)只是"旧快照 vs 新快照"这一次性的差异,
+//     不存在两层内容各自独立淡入淡出、必须互相错开时间点的编排问题。
+//   - DOM 变化(面板插入/移除、卡片隐藏/恢复)在 startViewTransition 的
+//     回调里同步完成,浏览器只在"变化前""变化后"分别拍照,不存在"变化
+//     和过渡撞在同一个任务里"这回事——因为真正的过渡发生在浏览器另外
+//     维护的一套快照动画上,和这次同步 DOM 变化本身是两件解耦的事。
 //
-// 背景其余卡片的缩小/模糊效果不变(这部分没出过问题,原样保留)。
+// 不支持 View Transitions 的浏览器(document.startViewTransition 不
+// 存在)会直接跳过动画,同步完成 DOM 切换,核心浏览功能不受影响(见
+// supportsViewTransitions 分支)。
 
 function initExpandInteractions() {
   const bentoGrid = document.getElementById("bento-grid");
   const backdrop = document.getElementById("expand-backdrop");
   if (!bentoGrid || !backdrop) return;
 
-  let current = null; // { panel, card } —— 当前打开的弹层 + 它对应的触发卡片
+  let current = null; // { panel, card, moduleId } —— 当前展开的模块
   let previouslyFocused = null;
-  let isClosing = false;
+  let isAnimating = false; // 一次 view transition 正在播放期间,不能再开始下一次
 
-  function prefersReducedMotion() {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function supportsViewTransitions() {
+    return typeof document.startViewTransition === "function";
   }
 
-  // 弹层的过渡属性统一在这里声明,开合两个方向共用同一条曲线。
-  function panelTransition(reduceMotion) {
-    return reduceMotion ? "opacity 200ms ease" : "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease";
-  }
-
-  // 弹层固定用 top:50%;left:50%;translate(-50%,-50%) 定位在屏幕正中央;
-  // "从卡片中心出现"只需要再叠加一个像素级的 translate 偏移(卡片中心
-  // 到屏幕中心的距离)+ 一个统一的 scale(0.3) 起始比例——不对卡片和
-  // 弹层的具体尺寸做任何比例换算,所以无论卡片多宽多窄,弹层内容都不
-  // 会被非均匀缩放压扁。
-  function shrunkTransform(card) {
-    const rect = card.getBoundingClientRect();
-    const dx = rect.left + rect.width / 2 - window.innerWidth / 2;
-    const dy = rect.top + rect.height / 2 - window.innerHeight / 2;
-    return `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.3)`;
-  }
-
-  const RESTING_TRANSFORM = "translate(-50%, -50%) scale(1)";
-
-  function expandCard(card) {
-    if (current) return;
-    const moduleId = card.dataset.expand;
-    const builder = FULL_CONTENT_BUILDERS[moduleId];
-    if (!builder) return;
-
-    previouslyFocused = document.activeElement;
-    const reduceMotion = prefersReducedMotion();
-
-    // 全新创建的独立元素,不是复用上一次用过的弹层。
+  function buildPanel(moduleId, builder) {
     const titleId = `overlay-title-${moduleId}`;
     const panel = document.createElement("div");
     panel.className = "overlay-panel";
@@ -306,89 +282,151 @@ function initExpandInteractions() {
       </button>
       <div class="overlay-content">${builder(titleId)}</div>
     `;
+    return panel;
+  }
 
-    panel.style.transition = "none";
-    panel.style.opacity = "0";
-    panel.style.transform = reduceMotion ? RESTING_TRANSFORM : shrunkTransform(card);
+  // 展开后的目标 DOM 状态:卡片用 visibility:hidden 让出视觉呈现(同时
+  // 退出可访问性树、不可聚焦、不接收指针事件,不需要额外单独处理这几
+  // 件事);面板插入 body;背景整体降低存在感(这部分是普通 CSS 过渡,
+  // 不参与 view transition 的具名快照,和上一版实现一样,原样保留)。
+  function applyOpenState(card, panel) {
+    card.classList.add("is-overlay-active");
+    card.style.visibility = "hidden";
 
     document.body.appendChild(panel);
-    void panel.offsetWidth; // 强制回流,确保上面的起始状态先生效,再进入下一帧的过渡
-
-    current = { panel, card };
-
-    // 原卡片:只做透明度淡出,不涉及任何位移/缩放。
-    card.classList.add("is-overlay-active");
-    card.style.transition = "opacity 180ms ease";
-    card.style.opacity = "0";
-    card.style.pointerEvents = "none";
 
     bentoGrid.classList.add("has-overlay-open");
     bentoGrid.inert = true;
     document.body.style.overflow = "hidden";
     backdrop.classList.add("is-visible");
+  }
 
-    requestAnimationFrame(() => {
-      panel.style.transition = panelTransition(reduceMotion);
-      panel.style.opacity = "1";
-      panel.style.transform = RESTING_TRANSFORM;
+  function applyClosedState(card, panel) {
+    panel.remove();
+
+    card.classList.remove("is-overlay-active");
+    card.style.visibility = "";
+
+    bentoGrid.classList.remove("has-overlay-open");
+    bentoGrid.inert = false;
+    document.body.style.overflow = "";
+    backdrop.classList.remove("is-visible");
+  }
+
+  function expandCard(card) {
+    if (current || isAnimating) return;
+    const moduleId = card.dataset.expand;
+    const builder = FULL_CONTENT_BUILDERS[moduleId];
+    if (!builder) return;
+
+    previouslyFocused = document.activeElement;
+    const vtName = `card-${moduleId}`;
+    const panel = buildPanel(moduleId, builder);
+
+    // 降级路径:不支持 View Transitions 的环境,直接完成 DOM 切换,
+    // 没有动画,但功能不受影响。
+    if (!supportsViewTransitions()) {
+      applyOpenState(card, panel);
+      current = { panel, card, moduleId };
+      afterOpen(panel);
+      return;
+    }
+
+    isAnimating = true;
+    // "旧"快照的持有者:卡片当前的样子。必须在 startViewTransition 之前
+    // 设置,浏览器才能在启动过渡时立刻拍下这一帧。
+    card.style.viewTransitionName = vtName;
+
+    let transition;
+    try {
+      transition = document.startViewTransition(() => {
+        card.style.viewTransitionName = ""; // 卡片让出这个名字
+        applyOpenState(card, panel);
+        panel.style.viewTransitionName = vtName; // 面板接过来,浏览器识别为同一个过渡目标
+        current = { panel, card, moduleId };
+        // 注意:startViewTransition 的回调不是同步执行的——规范把它排进
+        // 一个 rendering task,要等到下一次渲染机会才真正跑,不是
+        // startViewTransition() 一返回就已经跑完。所以"面板已经插入
+        // DOM、可以安全聚焦关闭按钮"这件事只有在这个回调*内部*、DOM
+        // 变化真正落地之后才成立,必须在这里调用 afterOpen,不能挪到
+        // startViewTransition() 调用之后——那样 afterOpen 会在回调真正
+        // 执行前就跑,对着还没插入文档的面板调用 .focus() 会静默失效。
+        afterOpen(panel);
+      });
+    } catch (err) {
+      // 极端情况(比如浏览器报告支持但实际抛错):照常完成切换,只是
+      // 没有动画,不让交互卡住。
+      card.style.viewTransitionName = "";
+      applyOpenState(card, panel);
+      current = { panel, card, moduleId };
+      isAnimating = false;
+      afterOpen(panel);
+      return;
+    }
+
+    transition.finished.catch(() => {}).finally(() => {
+      isAnimating = false;
     });
+  }
 
+  function afterOpen(panel) {
     document.addEventListener("keydown", onKeydown);
     panel.querySelector(".overlay-close").addEventListener("click", closeOverlay);
     panel.querySelector(".overlay-close").focus();
   }
 
   function closeOverlay() {
-    if (!current || isClosing) return;
-    isClosing = true;
-    const { panel, card } = current;
-    const reduceMotion = prefersReducedMotion();
+    if (!current || isAnimating) return;
+    const { panel, card, moduleId } = current;
+    const vtName = `card-${moduleId}`;
 
     document.removeEventListener("keydown", onKeydown);
-    bentoGrid.classList.remove("has-overlay-open");
-    bentoGrid.inert = false;
-    document.body.style.overflow = "";
-    backdrop.classList.remove("is-visible");
 
-    // 展开动画的反向播放:弹层缩回卡片中心附近并淡出,卡片同时淡入。
-    panel.style.transition = panelTransition(reduceMotion);
-    panel.style.opacity = "0";
-    panel.style.transform = reduceMotion ? RESTING_TRANSFORM : shrunkTransform(card);
-
-    card.style.transition = "opacity 200ms ease";
-    card.style.opacity = "1";
-
-    let finalized = false;
-    function finalize() {
-      if (finalized) return;
-      finalized = true;
-      panel.removeEventListener("transitionend", onTransitionEnd);
-      panel.remove(); // 彻底从 DOM 移除,不是隐藏——下次打开是全新元素
-
-      card.classList.remove("is-overlay-active");
-      card.style.transition = "";
-      card.style.opacity = "";
-      card.style.pointerEvents = "";
-
-      if (document.contains(card)) {
-        card.focus();
-      } else if (previouslyFocused && document.contains(previouslyFocused)) {
-        previouslyFocused.focus();
-      }
-
-      // 通知其它模块(比如手机端卡片堆叠)这张卡片已经收起,可以重新
-      // 计算自己的布局了,不直接依赖这里的内部实现。
-      card.dispatchEvent(new CustomEvent("bento:collapsed", { bubbles: true }));
-
-      current = null;
-      isClosing = false;
+    if (!supportsViewTransitions()) {
+      applyClosedState(card, panel);
+      afterClose(card);
+      return;
     }
-    function onTransitionEnd(event) {
-      if (event.target === panel) finalize();
+
+    isAnimating = true;
+
+    let transition;
+    try {
+      transition = document.startViewTransition(() => {
+        panel.style.viewTransitionName = ""; // 面板让出("旧"快照它已经持有了)
+        applyClosedState(card, panel);
+        card.style.viewTransitionName = vtName; // 卡片接回来,反向播放同一段变形
+        // 和 expandCard 里同样的原因:回调是异步排入渲染任务的,card
+        // 恢复 visibility 这件事只有在这里(回调内部)才算真正生效,
+        // afterClose 里的 card.focus() 必须紧跟在这之后调用,否则会对
+        // 着此刻仍是 visibility:hidden 的卡片调用 focus(),同样会静默
+        // 失效。
+        afterClose(card);
+      });
+    } catch (err) {
+      applyClosedState(card, panel);
+      isAnimating = false;
+      afterClose(card);
+      return;
     }
-    panel.addEventListener("transitionend", onTransitionEnd);
-    // 兜底:极端情况下 transitionend 未触发时,仍要清理状态。
-    setTimeout(finalize, 550);
+
+    transition.finished.catch(() => {}).finally(() => {
+      card.style.viewTransitionName = ""; // 清理,避免残留到下一次打开
+      isAnimating = false;
+    });
+  }
+
+  function afterClose(card) {
+    if (document.contains(card)) {
+      card.focus();
+    } else if (previouslyFocused && document.contains(previouslyFocused)) {
+      previouslyFocused.focus();
+    }
+
+    // 通知其它模块(比如手机端卡片堆叠)这张卡片已经收起,可以重新
+    // 计算自己的布局了,不直接依赖这里的内部实现。
+    card.dispatchEvent(new CustomEvent("bento:collapsed", { bubbles: true }));
+    current = null;
   }
 
   function onKeydown(event) {

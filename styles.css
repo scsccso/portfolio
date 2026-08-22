@@ -197,11 +197,11 @@ body {
 }
 
 /* ---------- 点击展开:原卡片的状态 ----------
-   独立弹层架构(见 render.js initExpandInteractions):原卡片自始至终
-   留在原地,不做任何位移/缩放,只在展开期间用一个 class 记录状态 +
-   靠 render.js 内联样式做简单的 opacity 淡出/淡入。之前那版让卡片自己
-   reparent + transform 变形的机制连续出过三次不同的视觉异常,已放弃;
-   现在卡片这边的 CSS 状态少到几乎不需要专门声明什么。 */
+   View Transitions 架构(见 render.js initExpandInteractions):原卡片
+   自始至终留在原地,不做任何手写的位移/缩放/opacity 过渡。展开时卡片
+   只是 visibility:hidden(同时让出可访问性树/焦点/指针事件),"卡片
+   变成面板"这段视觉过渡完全是浏览器根据前后两次快照自动生成的,不需要
+   任何 CSS 过渡属性配合。 */
 
 .bento-card.is-overlay-active {
   cursor: default;
@@ -209,8 +209,9 @@ body {
 
 /* 展开期间背景其余卡片整体降低存在感:轻微缩小 + 模糊 + 降低透明度,
    和遮罩叠加在一起构成"当前这张卡片被拉到最前面"的观感(这部分沿用
-   自旧版,没出过问题)。触发卡片自己走的是简单 opacity 淡出(见
-   render.js),不需要这套缩小/模糊,所以排除在外。 */
+   自旧版,没出过问题,也不参与 view transition 的具名快照,只是普通
+   CSS 过渡)。触发卡片自己走 visibility:hidden,不需要这套缩小/模糊,
+   所以排除在外。 */
 .bento-grid.has-overlay-open > .bento-card:not(.is-overlay-active) {
   transform: scale(0.97);
   filter: blur(1.5px);
@@ -218,10 +219,10 @@ body {
   transition: transform 350ms var(--ease-out-soft), filter 350ms ease, opacity 350ms ease;
 }
 
-/* 卡片角落装饰数字:低对比度,不遮挡内容。之前"卡片自身变形"的架构
-   下,这里因为非均匀 scale 被压扁过、又因为过渡时序踩过坑——独立弹层
-   架构里原卡片完全不做 transform,只有 opacity 变化,数字不可能再被
-   压扁,这里不需要任何特殊处理。 */
+/* 卡片角落装饰数字:低对比度,不遮挡内容。原卡片完全不做 transform,
+   数字不可能被压扁;View Transitions 快照阶段的宽高比保持交给
+   object-fit: contain(见 .overlay-panel 附近的 ::view-transition-old/
+   new 规则),这里不需要任何特殊处理。 */
 .card-number {
   position: absolute;
   top: 4px;
@@ -481,18 +482,20 @@ body {
   pointer-events: auto;
 }
 
-/* ---------- 点击展开:独立弹层 ----------
+/* ---------- 点击展开:独立弹层(原生 View Transitions 驱动) ----------
    render.js 每次点击都用 document.createElement 新建这个元素、关闭
-   动画结束后彻底 remove() ——不是复用同一个持久元素隐藏/显示,所以这里
-   不需要声明"默认隐藏"的状态,JS 会在插入 DOM 的同时就设好起始内联
-   样式(opacity:0 + 缩小并偏移到触发卡片中心),这里只提供静态外观。
-   固定定位、水平垂直居中;position/opacity/transform 的动画数值全部由
-   render.js 内联样式驱动。 */
+   动画结束后彻底 remove() ——不是复用同一个持久元素隐藏/显示。卡片到
+   面板的"变形"动画不再由这里或 JS 逐帧计算 transform,而是浏览器原生
+   的 View Transitions API 负责:render.js 给卡片/面板动态设置相同的
+   view-transition-name,浏览器自动拍摄前后快照并插值——这里只需要给
+   面板声明好*最终静态外观*(固定定位、屏幕正中央),不需要任何初始
+   transform/opacity 内联样式了。 */
 
 .overlay-panel {
   position: fixed;
   top: 50%;
   left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 200;
   width: min(90vw, 720px);
   max-height: 84vh;
@@ -503,6 +506,29 @@ body {
   box-shadow:
     0 10px 24px rgba(26, 37, 48, 0.18),
     0 30px 60px rgba(26, 37, 48, 0.32);
+}
+
+/* 卡片 <-> 面板的共享过渡目标。三个可展开模块各自的 view-transition-
+   name 由 render.js 按 `card-${moduleId}` 生成,这里统一声明动画曲线
+   (复用我们已经在用的弹性缓动),避免浏览器默认的线性 crossfade。 */
+::view-transition-group(card-cineverse),
+::view-transition-group(card-skills),
+::view-transition-group(card-experience) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 新旧快照都用 contain 保持内容宽高比——卡片和面板的宽高比通常不同,
+   contain 确保过渡过程中内容整体缩放显示,不会被拉伸/压扁到容器的
+   宽高比(这正是上一版手写 FLIP 里"数字被压扁"那类 bug 的根源)。 */
+::view-transition-old(card-cineverse),
+::view-transition-new(card-cineverse),
+::view-transition-old(card-skills),
+::view-transition-new(card-skills),
+::view-transition-old(card-experience),
+::view-transition-new(card-experience) {
+  height: 100%;
+  object-fit: contain;
 }
 
 .overlay-close {
@@ -641,11 +667,20 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* 弹层本身的 transform 动画由 render.js 按 prefersReducedMotion()
-     分支跳过(全程停在 translate(-50%,-50%) scale(1),只做透明度
-     切换);触发卡片本来就只有简单的 opacity 淡出/淡入,不需要额外
-     处理。这里只处理背景卡片的缩小/模糊/变暗和遮罩,统一收成更快的
-     简单淡入淡出。 */
+  /* View Transitions 的动画时长交给浏览器原生降级,不是 JS 里的分支
+     判断:把生成的过渡动画时长压到接近 0(用极小值而不是字面 0,是
+     标准写法——0 在部分浏览器上会导致过渡事件触发不一致),浏览器会
+     跳过插值动画,直接呈现最终状态,不需要我们在 JS 里另写一套"跳过
+     transform 计算"的逻辑。 */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
+
+  /* 背景卡片的缩小/模糊/变暗和遮罩不参与 view transition 的具名快照,
+     仍然是普通 CSS 过渡,统一收成更快的简单淡入淡出。 */
   .bento-grid.has-overlay-open > .bento-card:not(.is-overlay-active) {
     transform: none !important;
     filter: none !important;
