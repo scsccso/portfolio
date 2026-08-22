@@ -702,11 +702,13 @@ body {
 
 /* 手机: <768px —— Apple Wallet 风格的层叠卡片,不是网格、也不是简单
    纵向堆叠。身份卡固定在层叠区域上方(不参与拖拽排序);其余六个模块
-   在 #mobile-stack 里层叠:最上层完整可见,其余依次向下偏移露出一小
-   段边缘。拖拽最上层卡片划开一定距离可以切换到下一张(见 render.js
-   initMobileStack,原生 Pointer Events 实现);点击(而非拖拽)最上层
-   卡片复用桌面端已有的点击展开机制,显示该模块完整内容(见 CLAUDE.md
-   「页面结构」)。 */
+   在 #mobile-stack 里层叠:最上层完整可见,其余每张露出自己顶部的一
+   条(标题所在的位置,足够完整读出标题文字,不只是一条模糊边缘)。
+   最上层卡片拖拽按方向分流(见 render.js initMobileStack,原生 Pointer
+   Events 实现):左右划开一定距离切换到下一张;向上划开一定距离触发
+   展开,和点击(不拖拽)最上层卡片是同一套展开机制(复用桌面端已有的
+   点击展开/View Transition,显示该模块完整内容,见 CLAUDE.md「页面
+   结构」)。 */
 @media (max-width: 767px) {
   .bento-grid {
     display: block;
@@ -765,7 +767,10 @@ body {
     -webkit-line-clamp: 2;
   }
 
-  /* Contact:不可展开,保留真实链接按钮,去掉说明文字、按钮改紧凑竖排 */
+  /* Contact:不可展开,保留真实链接按钮,去掉说明文字、按钮改紧凑竖排。
+     justify-content 用 flex-start(不再是 center)——层叠堆到最底层时,
+     卡片顶部露出的那一条要能看到标题,内容如果整体垂直居中,标题会
+     被推到堆叠露出区域以下,完全看不见。 */
   .bento-card.contact .bento-card-caption {
     display: none;
   }
@@ -773,7 +778,7 @@ body {
   .bento-card.contact .mount {
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 6px;
   }
 
@@ -797,9 +802,13 @@ body {
     left: 0;
     right: 0;
     height: 220px;
-    /* 横向手势留给拖拽逻辑(render.js 用 Pointer Events 处理),纵向
-       仍允许页面正常滚动,不用 preventDefault 抢事件 */
-    touch-action: pan-y;
+    /* 横向(切换)和纵向(上滑展开)手势现在都交给 render.js 的 Pointer
+       Events 逻辑判定,不能再放行原生纵向滚动——否则触屏上浏览器会把
+       纵向拖动当成页面滚动抢走,pointermove/pointerup 收不全,上滑
+       展开会时灵时不灵。只有最上层卡片会真正接收指针事件(其余层
+       pointer-events:none),所以这里禁用不影响在堆叠区域之外(比如
+       身份卡)正常触屏滚动页面。 */
+    touch-action: none;
   }
 }
 

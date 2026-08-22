@@ -459,18 +459,36 @@ function initExpandInteractions() {
 // ---------- 手机端:Apple Wallet 风格层叠卡片 ----------
 // 只在 <768px 生效(见 styles.css 对应断点)。#mobile-stack 下六个
 // 模块用一个 order 数组表示当前堆叠顺序,layoutStack() 按数组下标把
-// 每张卡片摆到它在堆叠里第几层的位置(index=0 是最上层)。原生
-// Pointer Events 实现拖拽:
+// 每张卡片摆到它在堆叠里第几层的位置(index=0 是最上层/当前可交互的
+// 那张)。
+//
+// 层叠的偏移方向是"反着"摆的,不是直觉上的"index 越大偏移越大":
+// 每张卡片自己的盒子高度都是 CARD_HEIGHT,标题在盒子顶部;如果像常见
+// 实现那样让最上层(index 0)停在 translateY(0)、越往后的卡片
+// translateY 越大(越往下压),那么被最上层卡片挡住之后,后面卡片"露
+// 出来"的那一小条,几何上必然是它自己盒子的*底部*,不是顶部——标题
+// 反而正好被完全盖住,不管把偏移量调多大都露不出标题,只会露出更多
+// 底部内容。所以这里反过来:index 0(最上层、完全可见)给最大的
+// translateY(压到堆叠最底部),index 最大(压在最底层)给 0(留在
+// 堆叠最顶部)。这样每张背后卡片"探出头"的那一条,就是它自己盒子的
+// *顶部*——正好是标题所在的位置。
+//
+// 原生 Pointer Events 实现拖拽,按主导方向分流,避免左右滑动和上滑
+// 互相误触发:
 //   - pointerdown 记录起点,只响应当前最上层卡片
-//   - pointermove 让卡片跟手指走(横向位移 + 轻微旋转)
-//   - pointerup:
-//       · 几乎没移动 → 判定为点击,转发给已有的展开机制(card.click()
-//         触发 initExpandInteractions 里委托在 #bento-grid 上的
-//         click 监听,不需要互相引用内部函数)
-//       · 横向移动超过卡片宽度 30% → 判定为划走:该卡片飞出屏幕,
-//         同时其余卡片补位到新的堆叠顺序,原卡片转一圈排到最后
-//       · 否则 → 判定为没划够,回弹到原位(复用 layoutStack 的弹性
-//         过渡,不用另外写一套回弹逻辑)
+//   - pointermove 让卡片跟手指走(横向位移 + 轻微旋转,纵向位移不
+//     额外处理,原样跟手,判定逻辑全部留到 pointerup 再做)
+//   - pointerup 先看总位移是否够得上"拖拽"(否则判定为点击,转发给
+//     已有的展开机制:card.click() 触发 initExpandInteractions 里
+//     委托在 #bento-grid 上的 click 监听,不需要互相引用内部函数);
+//     再比较 |dx| 与 |dy| 判断本次拖拽以哪个方向为主:
+//       · 横向为主 → 现有的"划走切换"逻辑:超过卡片宽度 30% 判定为
+//         划走(飞出屏幕 + 其余卡片补位 + 原卡片转一圈排到最后),
+//         否则回弹
+//       · 纵向为主且方向向上、位移超过 EXPAND_DISTANCE_THRESHOLD →
+//         判定为"上滑展开",同样转发一次 card.click()
+//       · 纵向为主但方向向下,或位移不够 → 回弹(复用 layoutStack
+//         的弹性过渡,不用另外写一套回弹逻辑)
 // 卡片展开期间只做透明度淡出、不脱离堆叠(独立弹层架构,见
 // initExpandInteractions),layoutStack 用 .is-overlay-active 跳过它,
 // 避免堆叠自己的深度透明度覆盖掉展开机制设的 opacity:0。收起完成后
@@ -479,10 +497,14 @@ function initExpandInteractions() {
 function initMobileStack() {
   const STACK_ORDER = ["cineverse", "skills", "experience", "techstack", "stats", "contact"];
   const CARD_HEIGHT = 220; // 需要和 styles.css 里 .mobile-stack .bento-card 的 height 保持一致
-  const PEEK = 18; // 每往后一层露出的边缘,落在 CLAUDE.md 要求的 15-20px 区间
+  // 每往后一层露出的边缘。16px 卡片内边距 + 16px 标题字号(body 继承
+  // line-height:1.5 → 24px 行高)+ 6px 标题下边距 ≈ 46px 才能露出完整
+  // 标题,52px 留一点呼吸空间,同时基本不会带出下一行内容的一小截。
+  const PEEK = 52;
   const SCALE_STEP = 0.035;
   const OPACITY_STEP = 0.07;
-  const DISMISS_THRESHOLD_RATIO = 0.3;
+  const DISMISS_THRESHOLD_RATIO = 0.3; // 横向为主时,超过卡片宽度这个比例判定为划走切换
+  const EXPAND_DISTANCE_THRESHOLD = 45; // 纵向为主且向上时,超过这个像素数判定为上滑展开
   const TAP_SLOP = 8; // px,超过这个移动量就不算点击,按拖拽处理
 
   const stackEl = document.getElementById("mobile-stack");
@@ -492,7 +514,12 @@ function initMobileStack() {
   let order = STACK_ORDER.slice();
   let mobileActive = mq.matches;
   let flyingCard = null;
-  let drag = null; // { card, pointerId, startX, startY, maxMove }
+  let drag = null; // { card, pointerId, startX, startY, maxMove, lastDx, lastDy }
+
+  // 最上层卡片(index 0)的静止 translateY——也是拖拽跟手时的 Y 基准,
+  // 见上方"反着摆"的说明。order.length 恒为 STACK_ORDER.length(切换
+  // 只重排数组,不增删),所以是个常量。
+  const frontOffsetY = (STACK_ORDER.length - 1) * PEEK;
 
   function prefersReducedMotion() {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -521,7 +548,10 @@ function initMobileStack() {
       card.style.transition = withTransition ? settleTransition(reduceMotion) : "none";
       card.style.zIndex = String(order.length - index);
       const scale = Math.max(1 - index * SCALE_STEP, 0.85);
-      card.style.transform = `translateY(${index * PEEK}px) scale(${scale})`;
+      // 偏移方向反过来:index 0(最上层)离顶部最远,越往后的卡片越
+      // 靠近顶部——见函数上方注释,这样露出来的才是标题所在的顶部。
+      const offsetY = (order.length - 1 - index) * PEEK;
+      card.style.transform = `translateY(${offsetY}px) scale(${scale})`;
       card.style.opacity = String(Math.max(1 - index * OPACITY_STEP, 0.75));
       card.style.pointerEvents = index === 0 ? "auto" : "none";
     });
@@ -555,13 +585,15 @@ function initMobileStack() {
 
     if (reduceMotion) {
       card.style.transition = "opacity 160ms ease";
-      card.style.transform = "translateY(0) scale(1)";
+      card.style.transform = `translateY(${frontOffsetY}px) scale(1)`;
       card.style.opacity = "0";
     } else {
       const direction = dx >= 0 ? 1 : -1;
       const flyX = direction * (stackEl.getBoundingClientRect().width + 240);
       card.style.transition = "transform 320ms ease-in, opacity 300ms ease-in";
-      card.style.transform = `translate(${flyX}px, ${dx * 0.25}px) rotate(${direction * 20}deg)`;
+      // 飞出的起点是最上层的静止位置(frontOffsetY),不能丢掉这个
+      // 基准,否则会先跳回 y=0 再飞出,肉眼可见的一次抽搐。
+      card.style.transform = `translate(${flyX}px, ${frontOffsetY + dx * 0.25}px) rotate(${direction * 20}deg)`;
       card.style.opacity = "0";
     }
 
@@ -614,15 +646,23 @@ function initMobileStack() {
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
     drag.lastDx = dx;
+    drag.lastDy = dy;
     drag.maxMove = Math.max(drag.maxMove, Math.abs(dx), Math.abs(dy));
     const rotate = Math.max(-14, Math.min(14, dx / 14));
-    drag.card.style.transform = `translate(${dx}px, ${dy}px) rotate(${rotate}deg)`;
+    // Y 方向要叠加 frontOffsetY(最上层卡片的静止偏移),不能只用 dy——
+    // 否则手指刚按下的瞬间卡片就会先跳到 y=0 再跟手,而不是从它真正
+    // 的静止位置开始跟。横向切换/纵向展开的方向判定留到 endDrag 里按
+    // |dx| 和 |dy| 的大小关系统一处理,这里只负责跟手的视觉效果,不
+    // 提前锁定手势类型,避免出现"跟手已经判定成某个方向,松手时又变
+    // 卦"的割裂感。
+    drag.card.style.transform = `translate(${dx}px, ${frontOffsetY + dy}px) rotate(${rotate}deg)`;
   }
 
   function endDrag(event) {
     if (!drag || event.pointerId !== drag.pointerId) return;
-    const { card, maxMove, width, lastDx } = drag;
+    const { card, maxMove, width, lastDx, lastDy } = drag;
     const dx = lastDx || 0;
+    const dy = lastDy || 0;
     try {
       card.releasePointerCapture(event.pointerId);
     } catch (err) {
@@ -640,11 +680,29 @@ function initMobileStack() {
       return;
     }
 
-    if (Math.abs(dx) > width * DISMISS_THRESHOLD_RATIO) {
-      dismissFrontCard(card, dx);
-    } else {
-      layoutStack(true); // 没划够阈值,order 没变,统一走 layoutStack 弹回原位
+    // 按主导方向分流:比较横向/纵向位移的绝对值,谁大听谁的,避免左右
+    // 切换和上滑展开互相误触发。
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      if (Math.abs(dx) > width * DISMISS_THRESHOLD_RATIO) {
+        dismissFrontCard(card, dx);
+      } else {
+        layoutStack(true); // 没划够阈值,order 没变,统一走 layoutStack 弹回原位
+      }
+      return;
     }
+
+    if (dy < 0 && Math.abs(dy) > EXPAND_DISTANCE_THRESHOLD) {
+      // 纵向为主且方向向上、划得够远:判定为上滑展开,复用点击展开的
+      // 转发方式(同一套 card.click() → #bento-grid 委托监听)。
+      card.style.transition = "none";
+      card.style.transform = "";
+      layoutStack(false);
+      card.click();
+      return;
+    }
+
+    // 纵向为主但方向向下,或者没划够展开阈值:回弹。
+    layoutStack(true);
   }
 
   function onPointerCancel(event) {
