@@ -13,8 +13,13 @@
     Bento 网格布局(见 CLAUDE.md「页面结构」):桌面端一屏内完整展示全部
     模块,不出现滚动条;平板/手机端堆叠为纵向滚动。模块顺序即 DOM 顺序,
     身份卡在前,与移动端"身份卡为第一个堆叠模块"的要求天然一致。
+
     内容量较大的模块(Skills / Experience / CineVerse 技术亮点详情)可
-    点击展开为居中弹层,交互逻辑见 render.js。
+    点击展开:展开时是同一张卡片本身连续放大(reparent 到 body 并用
+    position:fixed + transform 做 FLIP 动画),不是"隐藏原卡片、另外
+    弹出一个新面板"。卡片内部预留 .card-face-summary(摘要,默认可见)
+    与 .card-face-full(完整内容,展开时由 render.js 注入并淡入)两层,
+    以及一个仅在展开时显示的关闭按钮。交互逻辑见 render.js。
   -->
   <main id="bento-grid" class="bento-grid">
     <section class="bento-card identity" id="card-identity" aria-label="Identity">
@@ -27,10 +32,16 @@
       data-expand="cineverse"
       tabindex="0"
       role="button"
-      aria-haspopup="dialog"
+      aria-haspopup="true"
+      aria-expanded="false"
       aria-label="Featured project: CineVerse — click to view full details"
     >
       <div id="project-mount" class="mount"></div>
+      <button type="button" class="card-close-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
     </section>
 
     <section class="bento-card techstack" id="card-techstack" aria-label="Tech stack">
@@ -47,10 +58,16 @@
       data-expand="skills"
       tabindex="0"
       role="button"
-      aria-haspopup="dialog"
+      aria-haspopup="true"
+      aria-expanded="false"
       aria-label="Skills — click to view full details"
     >
       <div id="skills-mount" class="mount"></div>
+      <button type="button" class="card-close-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
     </section>
 
     <section
@@ -59,10 +76,16 @@
       data-expand="experience"
       tabindex="0"
       role="button"
-      aria-haspopup="dialog"
+      aria-haspopup="true"
+      aria-expanded="false"
       aria-label="Experience — click to view full details"
     >
       <div id="experience-mount" class="mount"></div>
+      <button type="button" class="card-close-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
     </section>
 
     <section class="bento-card contact" id="card-contact" aria-label="Contact">
@@ -70,26 +93,10 @@
     </section>
   </main>
 
-  <!-- 点击展开弹层:遮罩 + 居中面板。展开/收起的"软弹"动画由 render.js
-       通过内联 transform 计算(来源卡片 rect ↔ 弹层 rect),CSS 只提供
-       静态布局与过渡属性声明。 -->
-  <div id="overlay-root" class="overlay-root" aria-hidden="true">
-    <div id="overlay-backdrop" class="overlay-backdrop"></div>
-    <div
-      id="overlay-panel"
-      class="overlay-panel"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="overlay-title"
-    >
-      <button id="overlay-close" class="overlay-close" type="button" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18"></path>
-        </svg>
-      </button>
-      <div id="overlay-content" class="overlay-content"></div>
-    </div>
-  </div>
+  <!-- 展开时的背景遮罩:固定定位,z-index 低于被展开的卡片(见
+       render.js 中卡片被 reparent 到 body 后设为 z-index:200)、高于
+       网格本身,点击可关闭。 -->
+  <div id="expand-backdrop" class="expand-backdrop" aria-hidden="true"></div>
 
   <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释 -->
   <script src="content.js"></script>

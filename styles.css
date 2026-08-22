@@ -46,6 +46,7 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  position: relative; /* .card-face-full 的 inset:0 定位基准 */
 }
 
 /* ---------- Bento 网格容器 ----------
@@ -160,8 +161,8 @@ body {
   transition: transform 0.25s var(--ease-out-soft), box-shadow 0.25s var(--ease-out-soft);
 }
 
-.bento-card:hover,
-.bento-card:focus-within {
+.bento-card:hover:not(.is-lifted),
+.bento-card:focus-within:not(.is-lifted) {
   transform: translateY(-4px);
   box-shadow:
     0 2px 4px rgba(44, 62, 80, 0.08),
@@ -176,6 +177,109 @@ body {
 .bento-card.is-expandable:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
+}
+
+/* ---------- 点击展开:同一张卡片本身放大 ----------
+   .is-lifted 只负责非几何的视觉状态(阴影、cursor);position/top/left/
+   width/height/transform 全部由 render.js 用内联样式驱动(FLIP 动画,
+   需要精确的数值控制),这里不声明,避免两边打架。 */
+
+.bento-card.is-lifted {
+  cursor: default;
+  box-shadow:
+    0 12px 28px rgba(26, 37, 48, 0.22),
+    0 32px 64px rgba(26, 37, 48, 0.32);
+}
+
+/* 网格里占位置的空壳:视觉上不可见,但保留卡片原尺寸,防止卡片脱离
+   网格流(reparent 到 body)的瞬间其余模块跳位重排。 */
+.bento-card-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* 展开期间背景其余卡片整体降低存在感:轻微缩小 + 模糊 + 降低透明度,
+   和遮罩叠加在一起构成"这张卡片被拉到最前面"的观感。 */
+.bento-grid.has-lifted-card > .bento-card:not(.is-lifted):not(.bento-card-placeholder) {
+  transform: scale(0.97);
+  filter: blur(1.5px);
+  opacity: 0.6;
+  transition: transform 350ms var(--ease-out-soft), filter 350ms ease, opacity 350ms ease;
+}
+
+/* 卡片内的两层内容:摘要默认可见,完整内容默认透明地叠在同一块区域
+   之上,展开时二者交叉淡出/淡入(完整内容延迟一小段,让"先长大、
+   再显示细节"更明显,呼应 CLAUDE.md 的描述)。 */
+.card-face-summary {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+
+.card-face-full {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.bento-card.is-lifted .card-face-summary {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bento-card.is-lifted .card-face-full {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 260ms ease 150ms;
+}
+
+/* 关闭按钮:平时完全不可见/不可交互,只在卡片展开时出现在右上角。 */
+.card-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease 150ms, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.card-close-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.bento-card.is-lifted .card-close-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.card-close-btn:hover,
+.card-close-btn:focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  transform: translateY(-2px);
+}
+
+.card-close-btn:active {
+  transform: translateY(0);
 }
 
 /* 卡片角落装饰数字:低对比度,不遮挡内容 */
@@ -418,86 +522,29 @@ body {
   gap: 10px;
 }
 
-/* ---------- 点击展开弹层 ----------
-   overlay-root 的显隐(visibility/pointer-events)只由 .is-open 类控制,
-   且只在 render.js 完成收起动画后才移除该类,避免"瞬间消失"。弹层自身
-   的 transform/opacity 展开-收起动画由 render.js 用内联样式驱动(需要
-   根据触发卡片的实时位置计算位移/缩放),这里只声明静态外观。 */
+/* ---------- 点击展开:背景遮罩 ----------
+   固定定位、z-index 低于被展开的卡片(卡片 reparent 到 body 后是
+   200)、高于网格本身。显隐只由 .is-visible 控制透明度 + pointer-events,
+   render.js 只负责加/removeClass,不直接摆弄它的内联样式。 */
 
-.overlay-root {
+.expand-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  visibility: hidden;
+  z-index: 150;
+  background-color: rgba(44, 62, 80, 0.4);
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 300ms ease;
 }
 
-.overlay-root.is-open {
-  visibility: visible;
+.expand-backdrop.is-visible {
+  opacity: 1;
   pointer-events: auto;
 }
 
-.overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  background-color: rgba(44, 62, 80, 0.4);
-  opacity: 0;
-}
+/* ---------- 点击展开:.card-face-full 内的完整内容排版 ---------- */
 
-.overlay-panel {
-  position: relative;
-  width: min(92vw, 760px);
-  max-height: 84vh;
-  overflow-y: auto;
-  padding: 36px;
-  border-radius: 24px;
-  background-color: var(--color-surface);
-  box-shadow:
-    0 10px 24px rgba(26, 37, 48, 0.18),
-    0 30px 60px rgba(26, 37, 48, 0.32);
-  opacity: 0;
-  transform-origin: center;
-}
-
-.overlay-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-}
-
-.overlay-close svg {
-  width: 16px;
-  height: 16px;
-}
-
-.overlay-close:hover,
-.overlay-close:focus-visible {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background-color: var(--color-accent-soft);
-  transform: translateY(-2px);
-}
-
-.overlay-close:active {
-  transform: translateY(0);
-}
-
-.overlay-title {
+.full-title {
   margin: 0 0 20px;
   padding-right: 44px;
   font-size: clamp(24px, 2.6vw, 30px);
@@ -505,59 +552,59 @@ body {
   letter-spacing: -0.3px;
 }
 
-/* 弹层内 Skills 完整分类网格 */
-.overlay-skills-grid {
+/* 完整 Skills 分类网格 */
+.full-skills-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 24px;
 }
 
-.overlay-skills-category h3 {
+.full-skills-category h3 {
   margin: 0 0 10px;
   font-size: 15px;
   font-weight: 700;
 }
 
-.overlay-skills-category .stack-tags {
+.full-skills-category .stack-tags {
   margin: 0;
 }
 
-/* 弹层内 Experience 完整时间线 */
-.overlay-experience-item {
+/* 完整 Experience 时间线 */
+.full-experience-item {
   padding: 4px 0 24px 20px;
   border-left: 2px solid var(--color-border);
 }
 
-.overlay-experience-item:last-child {
+.full-experience-item:last-child {
   padding-bottom: 0;
 }
 
-.overlay-experience-item h3 {
+.full-experience-item h3 {
   margin: 0 0 4px;
   font-size: 17px;
   font-weight: 700;
 }
 
-.overlay-experience-role {
+.full-experience-role {
   margin: 0 0 8px;
   font-size: 13px;
   color: var(--color-text-secondary);
 }
 
-.overlay-experience-item p:last-child {
+.full-experience-item p:last-child {
   margin: 0;
   color: var(--color-text-secondary);
 }
 
-/* 弹层内 CineVerse 完整描述 + 技术亮点 */
-.overlay-project-description {
+/* 完整 CineVerse 描述 + 技术亮点 */
+.full-project-description {
   margin: 0 0 16px;
   max-width: 65ch;
   color: var(--color-text-secondary);
   font-size: 15px;
 }
 
-.overlay-highlights-grid {
+.full-highlights-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
@@ -597,12 +644,24 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .overlay-panel {
-    transition: opacity 150ms ease !important;
-    transform: none !important;
+  /* 卡片本身的 transform 动画由 render.js 按 prefersReducedMotion()
+     分支跳过(不设置 scale/translate,只做透明度切换);这里只处理
+     纯 CSS 驱动的部分:内容交叉淡出/淡入、关闭按钮、背景卡片的
+     缩小/模糊/变暗、遮罩,统一收成更快的简单淡入淡出,不用回弹。 */
+  .card-face-summary,
+  .card-face-full,
+  .card-close-btn {
+    transition-duration: 120ms !important;
+    transition-delay: 0s !important;
   }
 
-  .overlay-backdrop {
+  .bento-grid.has-lifted-card > .bento-card:not(.is-lifted):not(.bento-card-placeholder) {
+    transform: none !important;
+    filter: none !important;
+    transition: opacity 150ms ease !important;
+  }
+
+  .expand-backdrop {
     transition: opacity 150ms ease !important;
   }
 }
