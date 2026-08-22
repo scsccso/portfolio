@@ -344,7 +344,7 @@ function initExpandInteractions() {
     // 依赖卡片的 transition)。如果在回流之前就加上,浏览器会把这次
     // opacity 变化和上面那次回流合并成同一次样式计算,导致两层内容
     // 直接瞬间切换、动画被"吞掉"——曾经在这里踩过这个坑。
-    card.classList.add("is-lifted");
+    card.classList.add("is-lifted", "is-morphing");
     card.setAttribute("role", "dialog");
     card.setAttribute("aria-modal", "true");
     card.setAttribute("aria-expanded", "true");
@@ -439,8 +439,23 @@ function initExpandInteractions() {
         previouslyFocused.focus();
       }
 
+      // 通知其它模块(比如手机端卡片堆叠)这张卡片已经收起归位,可以
+      // 重新计算自己的布局了,不直接依赖这里的内部实现。
+      card.dispatchEvent(new CustomEvent("bento:collapsed", { bubbles: true }));
+
       liftedCard = null;
       isCollapsing = false;
+
+      // 装饰数字的淡入要等卡片在新的 DOM 位置"定妥"一帧之后再触发——
+      // reparent(insertBefore 到新父节点)和"移除 .is-morphing 触发
+      // opacity 过渡"如果发生在同一个同步任务里,过渡会被吞掉直接跳到
+      // 终值,和之前 is-lifted 撞上强制回流是同一类坑,这次换成了
+      // reparent 触发。强制回流一次,确保浏览器先把"卡片已经在新位置"
+      // 这件事定下来,再在下一帧改 class 触发过渡。
+      void card.offsetWidth;
+      requestAnimationFrame(() => {
+        card.classList.remove("is-morphing");
+      });
     }
     function onTransitionEnd(event) {
       if (event.target === card) finalize();
@@ -486,6 +501,234 @@ function initExpandInteractions() {
   });
 }
 
+// ---------- 手机端:Apple Wallet 风格层叠卡片 ----------
+// 只在 <768px 生效(见 styles.css 对应断点)。#mobile-stack 下六个
+// 模块用一个 order 数组表示当前堆叠顺序,layoutStack() 按数组下标把
+// 每张卡片摆到它在堆叠里第几层的位置(index=0 是最上层)。原生
+// Pointer Events 实现拖拽:
+//   - pointerdown 记录起点,只响应当前最上层卡片
+//   - pointermove 让卡片跟手指走(横向位移 + 轻微旋转)
+//   - pointerup:
+//       · 几乎没移动 → 判定为点击,转发给已有的展开机制(card.click()
+//         触发 initExpandInteractions 里委托在 #bento-grid 上的
+//         click 监听,不需要互相引用内部函数)
+//       · 横向移动超过卡片宽度 30% → 判定为划走:该卡片飞出屏幕,
+//         同时其余卡片补位到新的堆叠顺序,原卡片转一圈排到最后
+//       · 否则 → 判定为没划够,回弹到原位(复用 layoutStack 的弹性
+//         过渡,不用另外写一套回弹逻辑)
+// 卡片展开期间会被 reparent 到 body,layoutStack 用 .is-lifted 跳过它;
+// 收起完成后 render.js 会在 card 上派发 "bento:collapsed" 事件,这里
+// 监听它来在下一次开合后重新摆位(万一它在堆叠中的几何被展开机制的
+// 内联样式覆盖过)。
+function initMobileStack() {
+  const STACK_ORDER = ["cineverse", "skills", "experience", "techstack", "stats", "contact"];
+  const CARD_HEIGHT = 220; // 需要和 styles.css 里 .mobile-stack .bento-card 的 height 保持一致
+  const PEEK = 18; // 每往后一层露出的边缘,落在 CLAUDE.md 要求的 15-20px 区间
+  const SCALE_STEP = 0.035;
+  const OPACITY_STEP = 0.07;
+  const DISMISS_THRESHOLD_RATIO = 0.3;
+  const TAP_SLOP = 8; // px,超过这个移动量就不算点击,按拖拽处理
+
+  const stackEl = document.getElementById("mobile-stack");
+  if (!stackEl) return;
+
+  const mq = window.matchMedia("(max-width: 767px)");
+  let order = STACK_ORDER.slice();
+  let mobileActive = mq.matches;
+  let flyingCard = null;
+  let drag = null; // { card, pointerId, startX, startY, maxMove }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function cardEl(moduleId) {
+    // 排除占位 div:展开期间它借用同一个模块名的 class(为了拿到同一条
+    // grid-area 规则,见 initExpandInteractions),会和真正的卡片撞选
+    // 择器——真正的卡片这时已经被 reparent 到 body,但占位 div 还留在
+    // #mobile-stack 里,不排除的话 querySelector 会先匹配到它。
+    const selector = `.bento-card.${moduleId}:not(.bento-card-placeholder)`;
+    return stackEl.querySelector(selector) || document.querySelector(selector);
+  }
+
+  function settleTransition(reduceMotion) {
+    return reduceMotion ? "transform 160ms ease, opacity 160ms ease" : "transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease";
+  }
+
+  // 把 order 数组里的每张卡片摆到它当前下标对应的堆叠位置。飞出中的
+  // 卡片(flyingCard)跳过,它的落位由 dismissFrontCard 自己的动画流程
+  // 负责,不能被这里的"立刻摆好"打断。
+  function layoutStack(withTransition) {
+    if (!mobileActive) return;
+    const reduceMotion = prefersReducedMotion();
+    order.forEach((moduleId, index) => {
+      const card = cardEl(moduleId);
+      if (!card || card === flyingCard || card.classList.contains("is-lifted")) return;
+      // reduced motion 只改"怎么过渡"(见 settleTransition,弹性曲线
+      // 换成简单的 ease),不改层叠本身的静态外观——露出边缘的层叠
+      // 视觉不是"动效",没有理由跟着弹性缓动一起被去掉。
+      card.style.transition = withTransition ? settleTransition(reduceMotion) : "none";
+      card.style.zIndex = String(order.length - index);
+      const scale = Math.max(1 - index * SCALE_STEP, 0.85);
+      card.style.transform = `translateY(${index * PEEK}px) scale(${scale})`;
+      card.style.opacity = String(Math.max(1 - index * OPACITY_STEP, 0.75));
+      card.style.pointerEvents = index === 0 ? "auto" : "none";
+    });
+    stackEl.style.height = `${CARD_HEIGHT + (order.length - 1) * PEEK}px`;
+  }
+
+  function clearStackStyles() {
+    STACK_ORDER.forEach((moduleId) => {
+      const card = cardEl(moduleId);
+      if (!card) return;
+      card.style.transform = "";
+      card.style.zIndex = "";
+      card.style.opacity = "";
+      card.style.pointerEvents = "";
+      card.style.transition = "";
+    });
+    stackEl.style.height = "";
+  }
+
+  // 划走判定成立后:卡片自己飞出屏幕(简单的 ease-out,不用弹性曲线,
+  // 弹性曲线只用于"回到/落入堆叠位置"这类场景);同时立刻把 order
+  // 转一圈("最上层挪到最后"),让其余卡片马上跟着补位到新的堆叠顺序,
+  // 两个动画同时发生。飞出动画结束后,再把这张卡片无过渡地"放"到它
+  // 现在(堆叠最底层)该在的位置。
+  function dismissFrontCard(card, dx) {
+    const reduceMotion = prefersReducedMotion();
+    flyingCard = card;
+    card.style.pointerEvents = "none";
+
+    order.push(order.shift());
+
+    if (reduceMotion) {
+      card.style.transition = "opacity 160ms ease";
+      card.style.transform = "translateY(0) scale(1)";
+      card.style.opacity = "0";
+    } else {
+      const direction = dx >= 0 ? 1 : -1;
+      const flyX = direction * (stackEl.getBoundingClientRect().width + 240);
+      card.style.transition = "transform 320ms ease-in, opacity 300ms ease-in";
+      card.style.transform = `translate(${flyX}px, ${dx * 0.25}px) rotate(${direction * 20}deg)`;
+      card.style.opacity = "0";
+    }
+
+    layoutStack(true); // 其余卡片带过渡立刻补位,和飞出动画同时进行
+
+    let cleaned = false;
+    function cleanup() {
+      if (cleaned) return;
+      cleaned = true;
+      card.removeEventListener("transitionend", onEnd);
+      flyingCard = null;
+      card.style.transition = "none";
+      card.style.opacity = "";
+      layoutStack(false); // 无过渡地把它放到堆叠最底层该在的位置
+      void card.offsetWidth;
+    }
+    function onEnd(event) {
+      if (event.target === card) cleanup();
+    }
+    card.addEventListener("transitionend", onEnd);
+    setTimeout(cleanup, reduceMotion ? 260 : 450);
+  }
+
+  function onPointerDown(event) {
+    if (!mobileActive || drag) return;
+    const card = event.target.closest(".bento-card");
+    if (!card || card.parentElement !== stackEl) return;
+    if (card !== cardEl(order[0])) return; // 只有最上层卡片能拖
+    if (card.classList.contains("is-lifted")) return;
+
+    drag = {
+      card,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      maxMove: 0,
+      width: card.getBoundingClientRect().width,
+    };
+    card.style.transition = "none";
+    try {
+      card.setPointerCapture(event.pointerId);
+    } catch (err) {
+      // 部分环境(比如某些自动化测试)可能不支持,拖拽仍靠坐标计算,
+      // 不影响功能,静默忽略。
+    }
+  }
+
+  function onPointerMove(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    drag.lastDx = dx;
+    drag.maxMove = Math.max(drag.maxMove, Math.abs(dx), Math.abs(dy));
+    const rotate = Math.max(-14, Math.min(14, dx / 14));
+    drag.card.style.transform = `translate(${dx}px, ${dy}px) rotate(${rotate}deg)`;
+  }
+
+  function endDrag(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const { card, maxMove, width, lastDx } = drag;
+    const dx = lastDx || 0;
+    try {
+      card.releasePointerCapture(event.pointerId);
+    } catch (err) {
+      // 同上,忽略不支持的环境
+    }
+    drag = null;
+
+    if (maxMove < TAP_SLOP) {
+      // 判定为点击:先无过渡地归位,再转发成一次真正的点击事件,交给
+      // 已有的展开机制处理(它会自己检查 .is-expandable / data-expand)。
+      card.style.transition = "none";
+      card.style.transform = "";
+      layoutStack(false);
+      card.click();
+      return;
+    }
+
+    if (Math.abs(dx) > width * DISMISS_THRESHOLD_RATIO) {
+      dismissFrontCard(card, dx);
+    } else {
+      layoutStack(true); // 没划够阈值,order 没变,统一走 layoutStack 弹回原位
+    }
+  }
+
+  function onPointerCancel(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    drag = null;
+    layoutStack(true);
+  }
+
+  function handleBreakpointChange(event) {
+    mobileActive = event.matches;
+    if (mobileActive) {
+      layoutStack(false);
+    } else {
+      clearStackStyles();
+    }
+  }
+
+  stackEl.addEventListener("pointerdown", onPointerDown);
+  stackEl.addEventListener("pointermove", onPointerMove);
+  stackEl.addEventListener("pointerup", endDrag);
+  stackEl.addEventListener("pointercancel", onPointerCancel);
+
+  // 某张卡片点击展开、又收起完成后,重新按当前 order 摆位(它在展开期间
+  // 被展开机制的内联样式接管过,收起后几何已经清空,需要重新交给堆叠)。
+  document.addEventListener("bento:collapsed", (event) => {
+    if (!mobileActive) return;
+    if (!STACK_ORDER.includes(event.target.dataset.expand)) return;
+    layoutStack(false);
+  });
+
+  mq.addEventListener("change", handleBreakpointChange);
+
+  if (mobileActive) layoutStack(false);
+}
+
 function renderPage() {
   renderIdentity();
   renderProjectCard();
@@ -495,6 +738,7 @@ function renderPage() {
   renderExperienceCard();
   renderContactCard();
   initExpandInteractions();
+  initMobileStack();
 }
 
 // 为什么不用 View Transitions API(document.startViewTransition):

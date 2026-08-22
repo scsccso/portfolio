@@ -50,11 +50,11 @@ body {
 }
 
 /* ---------- Bento 网格容器 ----------
-   三档断点各自定义完整的 grid-template-columns/rows/areas(见文件底部
-   响应式区块),这里只放三档共用的默认值。手机端(<768px)是 2 列紧凑
-   具名区域网格,身份卡较大、其余模块只露出标题;平板简单 2 栏堆叠;
-   桌面 ≥1024px 是一屏 100vh 的 4 列具名区域网格,禁止出现滚动条
-   (见 CLAUDE.md「页面结构」)。 */
+   平板/桌面两档用 grid-template-columns/rows/areas(见文件底部响应式
+   区块),这里只放两档共用的默认值。平板简单 2 栏堆叠;桌面 ≥1024px
+   是一屏 100vh 的 4 列具名区域网格,禁止出现滚动条(见 CLAUDE.md
+   「页面结构」)。手机端(<768px)不用网格,身份卡固定在最上方,其余
+   六个模块是 #mobile-stack 里的层叠卡片(见下方对应区块)。 */
 
 .bento-grid {
   display: grid;
@@ -62,9 +62,8 @@ body {
   margin: 0 auto;
 }
 
-/* grid-area 赋值和视口无关,手机(2 列)、桌面(4 列)两套具名区域网格
-   共用同一批名字,平板不使用具名区域(见平板断点里的 grid-template-
-   areas: none 显式重置),放在这里三档通用,不必重复三遍。 */
+/* grid-area 赋值和视口无关,平板不使用具名区域(见平板断点里的
+   grid-template-areas: none 显式重置)。 */
 .bento-card.identity { grid-area: identity; }
 .bento-card.cineverse { grid-area: cineverse; }
 .bento-card.techstack { grid-area: techstack; }
@@ -72,6 +71,14 @@ body {
 .bento-card.skills { grid-area: skills; }
 .bento-card.experience { grid-area: experience; }
 .bento-card.contact { grid-area: contact; }
+
+/* #mobile-stack 包裹除身份卡外的六个模块。平板/桌面端它必须"隐形"——
+   display:contents 让它自己不生成盒子,子元素直接成为 .bento-grid 的
+   网格项,和这层包裹不存在时表现完全一致。只有手机端断点会把它换成
+   真正的定位容器(见文件底部响应式区块)。 */
+.mobile-stack {
+  display: contents;
+}
 
 /* ---------- 通用组件:标题 / eyebrow / 卡片 / pill 标签 / 按钮 ---------- */
 
@@ -305,10 +312,16 @@ body {
   transform: translateY(0);
 }
 
-/* 卡片角落装饰数字:低对比度,不遮挡内容。过渡进行中必须完全不可见——
-   只在卡片彻底收起或彻底展开的静止状态下才显示,不跟随 .card-face-
-   summary 的渐变同步淡入,否则尺寸剧烈变化的过程中数字会和关闭按钮、
-   完整内容层叠在一起显得凌乱。 */
+/* 卡片角落装饰数字:低对比度,不遮挡内容。CineVerse 卡片这一个用到
+   128px 的大号版本(见下方 .bento-card.cineverse .card-number),字号
+   越大,被非均匀 scale 压扁的观感就越明显——踩过一次坑:曾经用固定的
+   transition-delay 猜"卡片应该缩得差不多了",但回弹缓动曲线收尾阶段
+   比看起来的长,数字提前于卡片真正静止淡入,字形被卡片当时仍在进行
+   的 scale(sx,sy) 非均匀压扁,看起来像是字符间距异常,其实是"0"和"1"
+   的高度被压扁、宽度基本没变。改成完全交给 render.js 用 .is-morphing
+   类控制:展开开始到收起彻底结束(finalize)之间数字全程不可见,只有
+   render.js 确认卡片的 transform 已经真正归位、不再有任何几何变化
+   之后才移除这个类,数字才开始淡入——不再靠猜时长。 */
 .card-number {
   position: absolute;
   top: 4px;
@@ -323,15 +336,12 @@ body {
 }
 
 .card-face-summary .card-number {
-  /* 收起方向(基准态):等关闭按钮、完整内容都已消失/卡片基本缩完
-     再淡入,是这一圈交叉动画里最后出现的元素 */
-  transition: opacity 130ms ease 170ms;
+  transition: opacity 200ms ease;
 }
 
-.bento-card.is-lifted .card-face-summary .card-number {
-  opacity: 0;
-  /* 展开方向:立刻隐藏,不等 */
-  transition: opacity 90ms ease;
+.bento-card.is-morphing .card-face-summary .card-number {
+  opacity: 0 !important;
+  transition: none !important;
 }
 
 .stack-tags {
@@ -708,31 +718,27 @@ body {
    响应式断点(三档)
    ============================================================ */
 
-/* 手机: <768px —— 2 列紧凑具名区域网格,模块只露出标题(视情况带一行
-   摘要),完整内容一律靠点击展开获取(展开机制与桌面端共用,见
-   render.js)。身份卡跨 2 行、可以比其它模块大;其余六个模块大小相近。
-   目标是常见机型(如 390×844)基本一屏容纳、尽量不用滚动,不是"每个
-   模块占满宽度纵向堆叠"的简单方案(见 CLAUDE.md「页面结构」)。 */
+/* 手机: <768px —— Apple Wallet 风格的层叠卡片,不是网格、也不是简单
+   纵向堆叠。身份卡固定在层叠区域上方(不参与拖拽排序);其余六个模块
+   在 #mobile-stack 里层叠:最上层完整可见,其余依次向下偏移露出一小
+   段边缘。拖拽最上层卡片划开一定距离可以切换到下一张(见 render.js
+   initMobileStack,原生 Pointer Events 实现);点击(而非拖拽)最上层
+   卡片复用桌面端已有的点击展开机制,显示该模块完整内容(见 CLAUDE.md
+   「页面结构」)。 */
 @media (max-width: 767px) {
   .bento-grid {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(4, 1fr);
-    grid-template-areas:
-      "identity   cineverse"
-      "identity   techstack"
-      "stats      skills"
-      "experience contact";
-    gap: 10px;
+    display: block;
     max-width: 480px;
     padding: 14px;
-    /* 100vh 是兜底;支持 dvh 的浏览器用它排除地址栏拉伸/收起的影响 */
-    min-height: calc(100vh - 28px);
-    min-height: calc(100dvh - 28px);
+  }
+
+  .bento-card.identity {
+    margin-bottom: 16px;
   }
 
   .bento-card {
-    padding: 14px;
-    border-radius: 16px;
+    padding: 16px;
+    border-radius: 18px;
   }
 
   /* 标题仍 ≥16px(见 CLAUDE.md「手机端要求」);摘要/说明性文字空间
@@ -766,19 +772,15 @@ body {
     display: none;
   }
 
-  /* 身份卡:紧凑网格里允许比其它模块大(跨 2 行),头像/About 适度收窄 */
+  /* 身份卡:固定在层叠区域上方,横向铺满,不受拖拽影响 */
   .identity-avatar {
-    width: 44px;
-    height: 44px;
-    margin-bottom: 10px;
-  }
-
-  .identity-name {
-    font-size: 19px;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 12px;
   }
 
   .identity-about {
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
   }
 
   /* Contact:不可展开,保留真实链接按钮,去掉说明文字、按钮改紧凑竖排 */
@@ -795,6 +797,33 @@ body {
 
   .contact-actions {
     gap: 6px;
+  }
+
+  /* ---------- 层叠卡片容器 ----------
+     position:relative 是子卡片 position:absolute 的定位基准。容器
+     自身高度由 render.js 按"最上层卡片高度 + 其余卡片露出的偏移量"
+     算出来并写成内联样式——position:absolute 的子元素不会撑开父级,
+     必须显式给一个高度,否则容器塌陷成 0。 */
+  .mobile-stack {
+    display: block;
+    position: relative;
+  }
+
+  .mobile-stack .bento-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 220px;
+    /* 横向手势留给拖拽逻辑(render.js 用 Pointer Events 处理),纵向
+       仍允许页面正常滚动,不用 preventDefault 抢事件 */
+    touch-action: pan-y;
+  }
+
+  /* 展开中的卡片 reparent 到了 body、position:fixed,几何完全交给
+     点击展开机制自己的内联样式,层叠定位对它不生效 */
+  .mobile-stack .bento-card.is-lifted {
+    position: fixed;
   }
 }
 

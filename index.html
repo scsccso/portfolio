@@ -11,8 +11,16 @@
 <body>
   <!--
     Bento 网格布局(见 CLAUDE.md「页面结构」):桌面端一屏内完整展示全部
-    模块,不出现滚动条;平板/手机端堆叠为纵向滚动。模块顺序即 DOM 顺序,
-    身份卡在前,与移动端"身份卡为第一个堆叠模块"的要求天然一致。
+    模块,不出现滚动条;平板简单 2 栏堆叠;手机端(<768px)是 Apple
+    Wallet 风格的层叠卡片(见 #mobile-stack),不是网格也不是纵向堆叠。
+    身份卡固定在最上方,不参与层叠顺序。
+
+    #mobile-stack 包裹除身份卡外的六个模块:平板/桌面端它是
+    display:contents(自己不生成盒子,子元素直接参与 .bento-grid 的
+    网格布局,和不存在这层包裹时完全一样);只有手机端才变成层叠卡片的
+    定位容器,子元素 position:absolute 由 render.js 按堆叠顺序摆放,
+    支持 Pointer Events 拖拽切换。DOM 顺序即初始堆叠顺序(cineverse 在
+    最前)。
 
     内容量较大的模块(Skills / Experience / CineVerse 技术亮点详情)可
     点击展开:展开时是同一张卡片本身连续放大(reparent 到 body 并用
@@ -26,71 +34,73 @@
       <div id="identity-mount" class="mount"></div>
     </section>
 
-    <section
-      class="bento-card cineverse is-expandable"
-      id="card-cineverse"
-      data-expand="cineverse"
-      tabindex="0"
-      role="button"
-      aria-haspopup="true"
-      aria-expanded="false"
-      aria-label="Featured project: CineVerse — click to view full details"
-    >
-      <div id="project-mount" class="mount"></div>
-      <button type="button" class="card-close-btn" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18"></path>
-        </svg>
-      </button>
-    </section>
+    <div id="mobile-stack" class="mobile-stack">
+      <section
+        class="bento-card cineverse is-expandable"
+        id="card-cineverse"
+        data-expand="cineverse"
+        tabindex="0"
+        role="button"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="Featured project: CineVerse — click to view full details"
+      >
+        <div id="project-mount" class="mount"></div>
+        <button type="button" class="card-close-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </section>
 
-    <section class="bento-card techstack" id="card-techstack" aria-label="Tech stack">
-      <div id="techstack-mount" class="mount"></div>
-    </section>
+      <section
+        class="bento-card skills is-expandable"
+        id="card-skills"
+        data-expand="skills"
+        tabindex="0"
+        role="button"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="Skills — click to view full details"
+      >
+        <div id="skills-mount" class="mount"></div>
+        <button type="button" class="card-close-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </section>
 
-    <section class="bento-card stats" id="card-stats" aria-label="Key stat">
-      <div id="stats-mount" class="mount"></div>
-    </section>
+      <section
+        class="bento-card experience is-expandable"
+        id="card-experience"
+        data-expand="experience"
+        tabindex="0"
+        role="button"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-label="Experience — click to view full details"
+      >
+        <div id="experience-mount" class="mount"></div>
+        <button type="button" class="card-close-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </section>
 
-    <section
-      class="bento-card skills is-expandable"
-      id="card-skills"
-      data-expand="skills"
-      tabindex="0"
-      role="button"
-      aria-haspopup="true"
-      aria-expanded="false"
-      aria-label="Skills — click to view full details"
-    >
-      <div id="skills-mount" class="mount"></div>
-      <button type="button" class="card-close-btn" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18"></path>
-        </svg>
-      </button>
-    </section>
+      <section class="bento-card techstack" id="card-techstack" aria-label="Tech stack">
+        <div id="techstack-mount" class="mount"></div>
+      </section>
 
-    <section
-      class="bento-card experience is-expandable"
-      id="card-experience"
-      data-expand="experience"
-      tabindex="0"
-      role="button"
-      aria-haspopup="true"
-      aria-expanded="false"
-      aria-label="Experience — click to view full details"
-    >
-      <div id="experience-mount" class="mount"></div>
-      <button type="button" class="card-close-btn" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18"></path>
-        </svg>
-      </button>
-    </section>
+      <section class="bento-card stats" id="card-stats" aria-label="Key stat">
+        <div id="stats-mount" class="mount"></div>
+      </section>
 
-    <section class="bento-card contact" id="card-contact" aria-label="Contact">
-      <div id="contact-mount" class="mount"></div>
-    </section>
+      <section class="bento-card contact" id="card-contact" aria-label="Contact">
+        <div id="contact-mount" class="mount"></div>
+      </section>
+    </div>
   </main>
 
   <!-- 展开时的背景遮罩:固定定位,z-index 低于被展开的卡片(见
