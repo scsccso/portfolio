@@ -1,7 +1,7 @@
-// render.js — 读取 content.js 的数据,渲染进 index.html 的 bento 网格挂载点。
-// 普通 script(非 type="module"),原因见文件末尾说明。本轮只实现骨架:
-// 把"数据 → DOM"链路跑通,按 CLAUDE.md「页面结构」把七个模块渲染到对应
-// 网格位置。点击展开为居中弹层的交互(软弹动画)留待下一轮单独实现。
+// render.js — 读取 content.js 的数据,渲染进 index.html 的 bento 网格挂载点,
+// 并管理点击展开为居中弹层的交互。普通 script(非 type="module"),原因见
+// 文件末尾说明。按 CLAUDE.md「页面结构」把七个模块渲染到对应网格位置;
+// Skills / Experience / CineVerse 三个内容量较大的模块支持点击展开。
 
 // 头像占位 + 联系方式图标:纯内联 SVG,不引入图标库/图片资源。
 const AVATAR_PLACEHOLDER_ICON =
@@ -154,6 +154,238 @@ function renderContactCard() {
   `;
 }
 
+// ---------- 点击展开弹层:完整内容构建 ----------
+// 摘要卡片(compact)之外的完整内容,对应 index.html 中 .is-expandable
+// 卡片的 data-expand 值。
+
+function buildSkillsOverlayContent() {
+  return `
+    <h2 id="overlay-title" class="overlay-title">Skills</h2>
+    <div class="overlay-skills-grid">
+      ${content.skills.categories
+        .map(
+          (category) => `
+        <div class="overlay-skills-category">
+          <h3>${category.title}</h3>
+          <ul class="stack-tags">${category.items.map((item) => `<li class="stack-tag">${item}</li>`).join("")}</ul>
+        </div>
+      `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function buildExperienceOverlayContent() {
+  return `
+    <h2 id="overlay-title" class="overlay-title">Experience</h2>
+    ${content.experience.positions
+      .map(
+        (p) => `
+      <div class="overlay-experience-item">
+        <h3>${p.company}</h3>
+        <p class="overlay-experience-role">${p.role} · ${p.period}</p>
+        <p>${p.summary}</p>
+      </div>
+    `
+      )
+      .join("")}
+  `;
+}
+
+function buildProjectOverlayContent() {
+  const { name, description, stack, githubUrl, highlights } = content.project;
+
+  return `
+    <h2 id="overlay-title" class="overlay-title">${name}</h2>
+    <p class="overlay-project-description">${description}</p>
+    <ul class="stack-tags">${stack.map((tech) => `<li class="stack-tag">${tech}</li>`).join("")}</ul>
+    <a class="btn-pill" href="${githubUrl}" target="_blank" rel="noopener">View on GitHub</a>
+    <div class="overlay-highlights-grid">
+      ${highlights
+        .map(
+          (h, index) => `
+        <div class="highlight-card">
+          <span class="card-number" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
+          <h3>${h.title}</h3>
+          <p>${h.description}</p>
+        </div>
+      `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+const OVERLAY_BUILDERS = {
+  skills: buildSkillsOverlayContent,
+  experience: buildExperienceOverlayContent,
+  cineverse: buildProjectOverlayContent,
+};
+
+// ---------- 点击展开弹层:交互逻辑 ----------
+// 展开:从触发卡片的 rect 平滑放大到弹层的居中 rect,使用带回弹感的
+// cubic-bezier 曲线(约 400-500ms)。收起是同一动画的反向播放。
+// prefers-reduced-motion: reduce 时取消缩放/位移,只做简单透明度切换。
+
+function initOverlayInteractions() {
+  const bentoGrid = document.getElementById("bento-grid");
+  const overlayRoot = document.getElementById("overlay-root");
+  const overlayBackdrop = document.getElementById("overlay-backdrop");
+  const overlayPanel = document.getElementById("overlay-panel");
+  const overlayContent = document.getElementById("overlay-content");
+  const overlayCloseBtn = document.getElementById("overlay-close");
+  if (!bentoGrid || !overlayRoot || !overlayBackdrop || !overlayPanel || !overlayContent || !overlayCloseBtn) {
+    return;
+  }
+
+  let isOpen = false;
+  let sourceCard = null;
+  let previouslyFocused = null;
+  let closeFinalizeTimer = null;
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // 由两个 rect 算出"以 toRect 为基准、还原成 fromRect 大小与位置"所需
+  // 的 translate + scale,用于弹层展开/收起时和触发卡片对齐。
+  function transformBetween(fromRect, toRect) {
+    const scaleX = fromRect.width / toRect.width;
+    const scaleY = fromRect.height / toRect.height;
+    const dx = fromRect.left + fromRect.width / 2 - (toRect.left + toRect.width / 2);
+    const dy = fromRect.top + fromRect.height / 2 - (toRect.top + toRect.height / 2);
+    return `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`;
+  }
+
+  function openOverlay(card) {
+    if (isOpen) return;
+    const builder = OVERLAY_BUILDERS[card.dataset.expand];
+    if (!builder) return;
+
+    previouslyFocused = document.activeElement;
+    sourceCard = card;
+    overlayContent.innerHTML = builder();
+    overlayPanel.scrollTop = 0;
+
+    const cardRect = card.getBoundingClientRect();
+    const panelRect = overlayPanel.getBoundingClientRect();
+    const reduceMotion = prefersReducedMotion();
+
+    // 第一步:无过渡地把弹层放到"看起来就是那张卡片"的起始状态。
+    overlayPanel.style.transition = "none";
+    overlayBackdrop.style.transition = "none";
+    overlayPanel.style.transform = reduceMotion ? "none" : transformBetween(cardRect, panelRect);
+    overlayPanel.style.opacity = "0";
+    overlayBackdrop.style.opacity = "0";
+    void overlayPanel.offsetWidth; // 强制回流,确保起始状态先生效
+
+    overlayRoot.classList.add("is-open");
+    overlayRoot.setAttribute("aria-hidden", "false");
+    bentoGrid.inert = true;
+
+    // 第二步:下一帧启用过渡,回到弹层自身的居中位置/原始大小 —— 即
+    // 视觉上从卡片"软弹"放大展开的动画。
+    requestAnimationFrame(() => {
+      overlayPanel.style.transition = reduceMotion
+        ? "opacity 150ms ease"
+        : "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease";
+      overlayBackdrop.style.transition = reduceMotion ? "opacity 150ms ease" : "opacity 300ms ease";
+      overlayPanel.style.transform = "translate(0, 0) scale(1, 1)";
+      overlayPanel.style.opacity = "1";
+      overlayBackdrop.style.opacity = "1";
+    });
+
+    document.addEventListener("keydown", onKeydown);
+    overlayCloseBtn.focus();
+    isOpen = true;
+  }
+
+  function closeOverlay() {
+    if (!isOpen) return;
+    const reduceMotion = prefersReducedMotion();
+
+    if (closeFinalizeTimer) {
+      clearTimeout(closeFinalizeTimer);
+      closeFinalizeTimer = null;
+    }
+
+    // 展开动画的反向播放:从弹层当前的居中状态收缩回触发卡片的
+    // 位置/大小,而不是瞬间消失。
+    if (!reduceMotion && sourceCard) {
+      const cardRect = sourceCard.getBoundingClientRect();
+      const panelRect = overlayPanel.getBoundingClientRect();
+      overlayPanel.style.transition = "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease";
+      overlayPanel.style.transform = transformBetween(cardRect, panelRect);
+    } else {
+      overlayPanel.style.transition = "opacity 150ms ease";
+    }
+    overlayBackdrop.style.transition = reduceMotion ? "opacity 150ms ease" : "opacity 300ms ease";
+    overlayPanel.style.opacity = "0";
+    overlayBackdrop.style.opacity = "0";
+
+    overlayRoot.setAttribute("aria-hidden", "true");
+    bentoGrid.inert = false;
+    document.removeEventListener("keydown", onKeydown);
+
+    let finalized = false;
+    function finalize() {
+      if (finalized) return;
+      finalized = true;
+      overlayRoot.classList.remove("is-open");
+      overlayPanel.style.transition = "";
+      overlayPanel.style.transform = "";
+      overlayPanel.style.opacity = "";
+      overlayBackdrop.style.transition = "";
+      overlayBackdrop.style.opacity = "";
+      overlayContent.innerHTML = "";
+      overlayPanel.removeEventListener("transitionend", onTransitionEnd);
+    }
+    function onTransitionEnd(event) {
+      if (event.target === overlayPanel) finalize();
+    }
+    overlayPanel.addEventListener("transitionend", onTransitionEnd);
+    // 兜底:极端情况下 transitionend 未触发时,仍要清理状态。
+    closeFinalizeTimer = setTimeout(finalize, 550);
+
+    const focusTarget = sourceCard;
+    sourceCard = null;
+    isOpen = false;
+    if (focusTarget) {
+      focusTarget.focus();
+    } else if (previouslyFocused && document.contains(previouslyFocused)) {
+      previouslyFocused.focus();
+    }
+  }
+
+  function onKeydown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeOverlay();
+    }
+  }
+
+  bentoGrid.addEventListener("click", (event) => {
+    const card = event.target.closest(".bento-card.is-expandable");
+    if (!card) return;
+    // 卡片内部的真实链接(如 GitHub 按钮)保持默认导航行为,不触发展开。
+    const interactiveChild = event.target.closest("a, button");
+    if (interactiveChild && interactiveChild !== card) return;
+    openOverlay(card);
+  });
+
+  bentoGrid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const card = event.target.closest(".bento-card.is-expandable");
+    if (!card || event.target !== card) return;
+    event.preventDefault();
+    openOverlay(card);
+  });
+
+  overlayBackdrop.addEventListener("click", closeOverlay);
+  overlayCloseBtn.addEventListener("click", closeOverlay);
+}
+
 function renderPage() {
   renderIdentity();
   renderProjectCard();
@@ -162,6 +394,7 @@ function renderPage() {
   renderSkillsCard();
   renderExperienceCard();
   renderContactCard();
+  initOverlayInteractions();
 }
 
 // 本文件通过 <script src="render.js"> 加载,不使用 type="module":

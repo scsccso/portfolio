@@ -168,6 +168,16 @@ body {
     0 18px 36px rgba(44, 62, 80, 0.12);
 }
 
+/* 可点击展开的模块:光标提示可交互,聚焦时用主题色轮廓代替默认蓝框 */
+.bento-card.is-expandable {
+  cursor: pointer;
+}
+
+.bento-card.is-expandable:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
 /* 卡片角落装饰数字:低对比度,不遮挡内容 */
 .card-number {
   position: absolute;
@@ -406,6 +416,195 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* ---------- 点击展开弹层 ----------
+   overlay-root 的显隐(visibility/pointer-events)只由 .is-open 类控制,
+   且只在 render.js 完成收起动画后才移除该类,避免"瞬间消失"。弹层自身
+   的 transform/opacity 展开-收起动画由 render.js 用内联样式驱动(需要
+   根据触发卡片的实时位置计算位移/缩放),这里只声明静态外观。 */
+
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.overlay-root.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(44, 62, 80, 0.4);
+  opacity: 0;
+}
+
+.overlay-panel {
+  position: relative;
+  width: min(92vw, 760px);
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 36px;
+  border-radius: 24px;
+  background-color: var(--color-surface);
+  box-shadow:
+    0 10px 24px rgba(26, 37, 48, 0.18),
+    0 30px 60px rgba(26, 37, 48, 0.32);
+  opacity: 0;
+  transform-origin: center;
+}
+
+.overlay-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.overlay-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.overlay-close:hover,
+.overlay-close:focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  transform: translateY(-2px);
+}
+
+.overlay-close:active {
+  transform: translateY(0);
+}
+
+.overlay-title {
+  margin: 0 0 20px;
+  padding-right: 44px;
+  font-size: clamp(24px, 2.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* 弹层内 Skills 完整分类网格 */
+.overlay-skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 24px;
+}
+
+.overlay-skills-category h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.overlay-skills-category .stack-tags {
+  margin: 0;
+}
+
+/* 弹层内 Experience 完整时间线 */
+.overlay-experience-item {
+  padding: 4px 0 24px 20px;
+  border-left: 2px solid var(--color-border);
+}
+
+.overlay-experience-item:last-child {
+  padding-bottom: 0;
+}
+
+.overlay-experience-item h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.overlay-experience-role {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.overlay-experience-item p:last-child {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* 弹层内 CineVerse 完整描述 + 技术亮点 */
+.overlay-project-description {
+  margin: 0 0 16px;
+  max-width: 65ch;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+.overlay-highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.highlight-card {
+  position: relative;
+  padding: 20px;
+  border-radius: 14px;
+  border: 0.5px solid var(--color-border);
+  background-color: var(--color-bg);
+  overflow: hidden;
+}
+
+.highlight-card .card-number {
+  font-size: 32px;
+  top: 8px;
+  right: 12px;
+}
+
+.highlight-card h3 {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 8px;
+  padding-right: 36px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.highlight-card p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-panel {
+    transition: opacity 150ms ease !important;
+    transform: none !important;
+  }
+
+  .overlay-backdrop {
+    transition: opacity 150ms ease !important;
+  }
 }
 
 /* ============================================================
