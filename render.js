@@ -64,25 +64,22 @@ function renderIdentity() {
 }
 
 // CineVerse 项目大模块:白底 + 大装饰数字,摘要 + 精选技术栈 + GitHub 链接。
-// .card-face-summary 是摘要(默认可见),.card-face-full 是空壳,展开时
-// 由 initExpandInteractions 注入完整内容并淡入(见文件底部)。
+// 点击展开时完整内容显示在独立弹层里(见 initExpandInteractions),这里
+// 只渲染摘要,不需要额外的"完整内容"占位层。
 function renderProjectCard() {
   const mount = document.getElementById("project-mount");
   if (!mount) return;
   const { name, summary, stack, githubUrl } = content.project;
 
   mount.innerHTML = `
-    <div class="card-face-summary">
-      <span class="card-number" aria-hidden="true">01</span>
-      <span class="bento-eyebrow">Featured Project</span>
-      <h2 class="bento-card-title cineverse-title">${name}</h2>
-      <p class="bento-card-summary">${summary}</p>
-      <ul class="stack-tags compact">
-        ${stack.map((tech) => `<li class="stack-tag">${tech}</li>`).join("")}
-      </ul>
-      <a class="btn-pill btn-pill-sm" href="${githubUrl}" target="_blank" rel="noopener">View on GitHub</a>
-    </div>
-    <div class="card-face-full"></div>
+    <span class="card-number" aria-hidden="true">01</span>
+    <span class="bento-eyebrow">Featured Project</span>
+    <h2 class="bento-card-title cineverse-title">${name}</h2>
+    <p class="bento-card-summary">${summary}</p>
+    <ul class="stack-tags compact">
+      ${stack.map((tech) => `<li class="stack-tag">${tech}</li>`).join("")}
+    </ul>
+    <a class="btn-pill btn-pill-sm" href="${githubUrl}" target="_blank" rel="noopener">View on GitHub</a>
   `;
 }
 
@@ -120,13 +117,10 @@ function renderSkillsCard() {
   if (!mount) return;
 
   mount.innerHTML = `
-    <div class="card-face-summary">
-      <h2 class="bento-card-title">Skills</h2>
-      <ul class="bento-summary-list">
-        ${content.skills.categories.map((c) => `<li>${c.title}</li>`).join("")}
-      </ul>
-    </div>
-    <div class="card-face-full"></div>
+    <h2 class="bento-card-title">Skills</h2>
+    <ul class="bento-summary-list">
+      ${content.skills.categories.map((c) => `<li>${c.title}</li>`).join("")}
+    </ul>
   `;
 }
 
@@ -136,13 +130,10 @@ function renderExperienceCard() {
   if (!mount) return;
 
   mount.innerHTML = `
-    <div class="card-face-summary">
-      <h2 class="bento-card-title">Experience</h2>
-      <ul class="bento-summary-list">
-        ${content.experience.positions.map((p) => `<li><strong>${p.company}</strong></li>`).join("")}
-      </ul>
-    </div>
-    <div class="card-face-full"></div>
+    <h2 class="bento-card-title">Experience</h2>
+    <ul class="bento-summary-list">
+      ${content.experience.positions.map((p) => `<li><strong>${p.company}</strong></li>`).join("")}
+    </ul>
   `;
 }
 
@@ -166,9 +157,9 @@ function renderContactCard() {
 }
 
 // ---------- 点击展开:完整内容构建 ----------
-// .card-face-full 展开时被注入的完整内容,对应 index.html 中
-// .is-expandable 卡片的 data-expand 值。每个 builder 接收一个 titleId,
-// 供 <h2> 用作 aria-labelledby 的目标。
+// 展开时注入独立弹层(.overlay-content,见 initExpandInteractions)的
+// 完整内容,对应 index.html 中 .is-expandable 卡片的 data-expand 值。
+// 每个 builder 接收一个 titleId,供 <h2> 用作 aria-labelledby 的目标。
 
 function buildSkillsFullContent(titleId) {
   return `
@@ -235,203 +226,149 @@ const FULL_CONTENT_BUILDERS = {
   cineverse: buildProjectFullContent,
 };
 
-// ---------- 点击展开:交互逻辑 ----------
-// 关键约束:放大的必须是被点击的那张卡片本身(同一个 DOM 节点),不是
-// 另外生成的弹层元素。做法(手写 FLIP,不用 View Transitions API——
-// 原因见文件末尾说明):
-//   1. 记录卡片当前的 rect(first),在它原来的网格位置插入一个同尺寸
-//      的占位 div(borrow 它的 class 以获得同样的 grid-area),让网格
-//      不因卡片离开而重新排列。
-//   2. 把卡片本身 appendChild 到 document.body(脱离 bentoGrid,这样
-//      之后对 bentoGrid 设置 inert 就不会连带把卡片自己也弄成 inert),
-//      设为 position:fixed 并把 top/left/width/height 直接设成目标
-//      展开框(屏幕居中,约 85vw/80vh)。
-//   3. 立刻叠加一个 translate+scale,把它"拉回" first 的位置/大小(视觉
-//      上完全看不出变化),强制回流后,在下一帧把 transform 过渡回
-//      identity —— 这就是卡片从原位置/尺寸"长大"到居中大框的动画。
-//   4. 卡片内部 .card-face-summary 淡出、.card-face-full(此时才注入
-//      完整内容)延迟淡入,配合放大动作,而不是一开始就塞进小卡片里。
-//   5. 关闭是同一套 FLIP 反过来播放:目标 rect 换成占位 div 的 rect,
-//      动画结束后把卡片重新插回占位 div 的位置并移除占位 div。
-// 背景其余卡片在展开期间整体降低透明度/轻微缩小/模糊,和遮罩一起构成
-// "这张卡片被拉到最前面"的观感。
+// ---------- 点击展开:交互逻辑(独立弹层架构) ----------
+// 之前用过"卡片本身 reparent 到 body + position:fixed + transform 实时
+// 变形"的 FLIP 机制,连续踩过三次不同的视觉异常(装饰数字被非均匀缩放
+// 压扁、内容交叉淡入淡出时序错位导致双重曝光、reparent 与过渡撞在同一
+// 个同步任务里导致透明度残留)——都是"同一个元素要在极短时间内做位移/
+// 形变/reparent 好几件事,还要互相咬合精确时序"这类复杂度带来的,不是
+// 孤立的小 bug,所以放弃这条路线,换成更简单、状态更少的架构:
+//
+//   1. 原卡片自始至终留在原地(不 reparent、不做任何 transform),点击
+//      时只做一件事:opacity 淡出。淡出结束后仍然是同一个元素、同一个
+//      位置,没有任何"形变"这个维度需要担心。
+//   2. 完整内容显示在一个全新创建的独立弹层里(document.createElement,
+//      不是复用某个持久元素隐藏/显示)。弹层固定定位在屏幕正中央;
+//      展开动画只是让它从"卡片中心、缩小到 30%、透明"过渡到"屏幕
+//      中央、原始大小、不透明",用的是统一(而不是逐轴不同)的 scale,
+//      所以内容不会被压扁——这是从架构上避免装饰数字那类问题,不是
+//      靠猜时机去"赶在变形结束前躲开"。
+//   3. 关闭时弹层反向播放同一段动画,原卡片同时淡入;弹层的过渡结束后
+//      直接从 DOM 里彻底移除(remove(),不是隐藏),不会有"上一次开合
+//      忘记清空的内联样式"这类残留状态可以累积,因为下一次打开根本是
+//      全新的元素。
+//
+// 背景其余卡片的缩小/模糊效果不变(这部分没出过问题,原样保留)。
 
 function initExpandInteractions() {
   const bentoGrid = document.getElementById("bento-grid");
   const backdrop = document.getElementById("expand-backdrop");
   if (!bentoGrid || !backdrop) return;
 
-  let liftedCard = null;
-  let placeholder = null;
+  let current = null; // { panel, card } —— 当前打开的弹层 + 它对应的触发卡片
   let previouslyFocused = null;
-  let isCollapsing = false;
-  let finalizeTimer = null;
+  let isClosing = false;
 
   function prefersReducedMotion() {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
-  // 展开后的目标框:屏幕居中,约占视口 85% 宽 / 80% 高,并设上限避免
-  // 大屏幕上过大。
-  function targetGeometry() {
-    const width = Math.min(window.innerWidth * 0.85, 960);
-    const height = Math.min(window.innerHeight * 0.8, 680);
-    return {
-      width,
-      height,
-      left: (window.innerWidth - width) / 2,
-      top: (window.innerHeight - height) / 2,
-    };
+  // 弹层的过渡属性统一在这里声明,开合两个方向共用同一条曲线。
+  function panelTransition(reduceMotion) {
+    return reduceMotion ? "opacity 200ms ease" : "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease";
   }
 
-  // 由两个 rect 算出"从 toRect 的框还原成 fromRect 的框"所需的
-  // translate + scale,即经典 FLIP 的 Invert 步骤。
-  function flipTransform(fromRect, toRect) {
-    const dx = fromRect.left + fromRect.width / 2 - (toRect.left + toRect.width / 2);
-    const dy = fromRect.top + fromRect.height / 2 - (toRect.top + toRect.height / 2);
-    const scaleX = fromRect.width / toRect.width;
-    const scaleY = fromRect.height / toRect.height;
-    return `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`;
+  // 弹层固定用 top:50%;left:50%;translate(-50%,-50%) 定位在屏幕正中央;
+  // "从卡片中心出现"只需要再叠加一个像素级的 translate 偏移(卡片中心
+  // 到屏幕中心的距离)+ 一个统一的 scale(0.3) 起始比例——不对卡片和
+  // 弹层的具体尺寸做任何比例换算,所以无论卡片多宽多窄,弹层内容都不
+  // 会被非均匀缩放压扁。
+  function shrunkTransform(card) {
+    const rect = card.getBoundingClientRect();
+    const dx = rect.left + rect.width / 2 - window.innerWidth / 2;
+    const dy = rect.top + rect.height / 2 - window.innerHeight / 2;
+    return `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(0.3)`;
   }
+
+  const RESTING_TRANSFORM = "translate(-50%, -50%) scale(1)";
 
   function expandCard(card) {
-    if (liftedCard) return;
+    if (current) return;
     const moduleId = card.dataset.expand;
     const builder = FULL_CONTENT_BUILDERS[moduleId];
-    const fullFace = card.querySelector(".card-face-full");
-    const closeBtn = card.querySelector(".card-close-btn");
-    if (!builder || !fullFace || !closeBtn) return;
+    if (!builder) return;
 
     previouslyFocused = document.activeElement;
-    liftedCard = card;
-
-    const firstRect = card.getBoundingClientRect();
-
-    // 占位 div:借用卡片当前的 class(含模块名,如 "cineverse"),从而
-    // 复用同一条 grid-area 规则,原地"顶替"卡片在网格里的位置。
-    placeholder = document.createElement("div");
-    placeholder.className = `${card.className.replace("is-expandable", "").trim()} bento-card-placeholder`;
-    placeholder.style.width = `${firstRect.width}px`;
-    placeholder.style.height = `${firstRect.height}px`;
-    placeholder.setAttribute("aria-hidden", "true");
-    card.parentNode.insertBefore(placeholder, card);
-
-    const titleId = `${card.id}-full-title`;
-    fullFace.innerHTML = builder(titleId);
-
-    // 卡片本身脱离 bentoGrid,挪到 body 下:既让它不受下面 inert 影响,
-    // 也让 position:fixed 稳定地相对视口定位。
-    document.body.appendChild(card);
-
-    const target = targetGeometry();
     const reduceMotion = prefersReducedMotion();
 
-    card.style.transition = "none";
-    card.style.position = "fixed";
-    card.style.top = `${target.top}px`;
-    card.style.left = `${target.left}px`;
-    card.style.width = `${target.width}px`;
-    card.style.height = `${target.height}px`;
-    card.style.margin = "0";
-    card.style.zIndex = "200";
-    card.style.transform = reduceMotion ? "none" : flipTransform(firstRect, target);
-    if (reduceMotion) card.style.opacity = "0";
+    // 全新创建的独立元素,不是复用上一次用过的弹层。
+    const titleId = `overlay-title-${moduleId}`;
+    const panel = document.createElement("div");
+    panel.className = "overlay-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-labelledby", titleId);
+    panel.innerHTML = `
+      <button type="button" class="overlay-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
+      <div class="overlay-content">${builder(titleId)}</div>
+    `;
 
-    void card.offsetWidth; // 强制回流,确保上面的起始状态(小卡片)先生效
+    panel.style.transition = "none";
+    panel.style.opacity = "0";
+    panel.style.transform = reduceMotion ? RESTING_TRANSFORM : shrunkTransform(card);
 
-    // .is-lifted 必须在强制回流"之后"才加:它驱动 .card-face-summary/
-    // .card-face-full 的交叉淡入淡出(各自声明了自己的 transition,不
-    // 依赖卡片的 transition)。如果在回流之前就加上,浏览器会把这次
-    // opacity 变化和上面那次回流合并成同一次样式计算,导致两层内容
-    // 直接瞬间切换、动画被"吞掉"——曾经在这里踩过这个坑。
-    card.classList.add("is-lifted", "is-morphing");
-    card.setAttribute("role", "dialog");
-    card.setAttribute("aria-modal", "true");
-    card.setAttribute("aria-expanded", "true");
-    card.setAttribute("aria-labelledby", titleId);
-    card.removeAttribute("aria-haspopup");
+    document.body.appendChild(panel);
+    void panel.offsetWidth; // 强制回流,确保上面的起始状态先生效,再进入下一帧的过渡
 
-    bentoGrid.classList.add("has-lifted-card");
+    current = { panel, card };
+
+    // 原卡片:只做透明度淡出,不涉及任何位移/缩放。
+    card.classList.add("is-overlay-active");
+    card.style.transition = "opacity 180ms ease";
+    card.style.opacity = "0";
+    card.style.pointerEvents = "none";
+
+    bentoGrid.classList.add("has-overlay-open");
     bentoGrid.inert = true;
     document.body.style.overflow = "hidden";
     backdrop.classList.add("is-visible");
 
     requestAnimationFrame(() => {
-      if (reduceMotion) {
-        card.style.transition = "opacity 150ms ease";
-        card.style.opacity = "1";
-      } else {
-        card.style.transition = "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 350ms ease";
-        card.style.transform = "translate(0, 0) scale(1, 1)";
-      }
+      panel.style.transition = panelTransition(reduceMotion);
+      panel.style.opacity = "1";
+      panel.style.transform = RESTING_TRANSFORM;
     });
 
     document.addEventListener("keydown", onKeydown);
-    closeBtn.focus();
+    panel.querySelector(".overlay-close").addEventListener("click", closeOverlay);
+    panel.querySelector(".overlay-close").focus();
   }
 
-  function collapseCard() {
-    if (!liftedCard || isCollapsing) return;
-    isCollapsing = true;
-    const card = liftedCard;
+  function closeOverlay() {
+    if (!current || isClosing) return;
+    isClosing = true;
+    const { panel, card } = current;
     const reduceMotion = prefersReducedMotion();
 
-    if (finalizeTimer) {
-      clearTimeout(finalizeTimer);
-      finalizeTimer = null;
-    }
-
-    card.setAttribute("aria-expanded", "false");
-    bentoGrid.classList.remove("has-lifted-card");
+    document.removeEventListener("keydown", onKeydown);
+    bentoGrid.classList.remove("has-overlay-open");
     bentoGrid.inert = false;
     document.body.style.overflow = "";
     backdrop.classList.remove("is-visible");
-    document.removeEventListener("keydown", onKeydown);
 
-    // 提前(而不是等 finalize)去掉 .is-lifted:让 .card-face-full 淡出、
-    // .card-face-summary 淡回,和卡片收缩同步进行,而不是等卡片已经缩
-    // 回小尺寸后,完整内容才突然消失、摘要突然出现。
-    card.classList.remove("is-lifted");
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-haspopup", "true");
-    card.removeAttribute("aria-modal");
-    card.removeAttribute("aria-labelledby");
+    // 展开动画的反向播放:弹层缩回卡片中心附近并淡出,卡片同时淡入。
+    panel.style.transition = panelTransition(reduceMotion);
+    panel.style.opacity = "0";
+    panel.style.transform = reduceMotion ? RESTING_TRANSFORM : shrunkTransform(card);
 
-    // 展开动画的反向播放:从卡片当前(居中放大)的 rect 收缩回占位 div
-    // 所在的位置/大小,而不是瞬间消失。
-    if (reduceMotion) {
-      card.style.transition = "opacity 150ms ease";
-      card.style.opacity = "0";
-    } else {
-      const currentRect = card.getBoundingClientRect();
-      const targetRect = placeholder.getBoundingClientRect();
-      card.style.transition = "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1)";
-      card.style.transform = flipTransform(targetRect, currentRect);
-    }
+    card.style.transition = "opacity 200ms ease";
+    card.style.opacity = "1";
 
     let finalized = false;
     function finalize() {
       if (finalized) return;
       finalized = true;
-      card.removeEventListener("transitionend", onTransitionEnd);
+      panel.removeEventListener("transitionend", onTransitionEnd);
+      panel.remove(); // 彻底从 DOM 移除,不是隐藏——下次打开是全新元素
 
-      card.style.position = "";
-      card.style.top = "";
-      card.style.left = "";
-      card.style.width = "";
-      card.style.height = "";
-      card.style.margin = "";
-      card.style.zIndex = "";
-      card.style.transform = "";
+      card.classList.remove("is-overlay-active");
       card.style.transition = "";
       card.style.opacity = "";
-
-      placeholder.parentNode.insertBefore(card, placeholder);
-      placeholder.remove();
-      placeholder = null;
-
-      const fullFace = card.querySelector(".card-face-full");
-      if (fullFace) fullFace.innerHTML = "";
+      card.style.pointerEvents = "";
 
       if (document.contains(card)) {
         card.focus();
@@ -439,36 +376,25 @@ function initExpandInteractions() {
         previouslyFocused.focus();
       }
 
-      // 通知其它模块(比如手机端卡片堆叠)这张卡片已经收起归位,可以
-      // 重新计算自己的布局了,不直接依赖这里的内部实现。
+      // 通知其它模块(比如手机端卡片堆叠)这张卡片已经收起,可以重新
+      // 计算自己的布局了,不直接依赖这里的内部实现。
       card.dispatchEvent(new CustomEvent("bento:collapsed", { bubbles: true }));
 
-      liftedCard = null;
-      isCollapsing = false;
-
-      // 装饰数字的淡入要等卡片在新的 DOM 位置"定妥"一帧之后再触发——
-      // reparent(insertBefore 到新父节点)和"移除 .is-morphing 触发
-      // opacity 过渡"如果发生在同一个同步任务里,过渡会被吞掉直接跳到
-      // 终值,和之前 is-lifted 撞上强制回流是同一类坑,这次换成了
-      // reparent 触发。强制回流一次,确保浏览器先把"卡片已经在新位置"
-      // 这件事定下来,再在下一帧改 class 触发过渡。
-      void card.offsetWidth;
-      requestAnimationFrame(() => {
-        card.classList.remove("is-morphing");
-      });
+      current = null;
+      isClosing = false;
     }
     function onTransitionEnd(event) {
-      if (event.target === card) finalize();
+      if (event.target === panel) finalize();
     }
-    card.addEventListener("transitionend", onTransitionEnd);
+    panel.addEventListener("transitionend", onTransitionEnd);
     // 兜底:极端情况下 transitionend 未触发时,仍要清理状态。
-    finalizeTimer = setTimeout(finalize, 550);
+    setTimeout(finalize, 550);
   }
 
   function onKeydown(event) {
     if (event.key === "Escape") {
       event.preventDefault();
-      collapseCard();
+      closeOverlay();
     }
   }
 
@@ -489,16 +415,7 @@ function initExpandInteractions() {
     expandCard(card);
   });
 
-  backdrop.addEventListener("click", collapseCard);
-
-  // 关闭按钮活在被展开的卡片里(展开时卡片已 reparent 到 body),用
-  // body 级委托代替给每个按钮单独绑定/解绑监听。折叠状态下按钮本身
-  // pointer-events:none,不会被误触发。
-  document.body.addEventListener("click", (event) => {
-    if (event.target.closest(".card-close-btn")) {
-      collapseCard();
-    }
-  });
+  backdrop.addEventListener("click", closeOverlay);
 }
 
 // ---------- 手机端:Apple Wallet 风格层叠卡片 ----------
@@ -516,10 +433,11 @@ function initExpandInteractions() {
 //         同时其余卡片补位到新的堆叠顺序,原卡片转一圈排到最后
 //       · 否则 → 判定为没划够,回弹到原位(复用 layoutStack 的弹性
 //         过渡,不用另外写一套回弹逻辑)
-// 卡片展开期间会被 reparent 到 body,layoutStack 用 .is-lifted 跳过它;
-// 收起完成后 render.js 会在 card 上派发 "bento:collapsed" 事件,这里
-// 监听它来在下一次开合后重新摆位(万一它在堆叠中的几何被展开机制的
-// 内联样式覆盖过)。
+// 卡片展开期间只做透明度淡出、不脱离堆叠(独立弹层架构,见
+// initExpandInteractions),layoutStack 用 .is-overlay-active 跳过它,
+// 避免堆叠自己的深度透明度覆盖掉展开机制设的 opacity:0。收起完成后
+// render.js 会在 card 上派发 "bento:collapsed" 事件,这里监听它来
+// 重新摆位一次,兜底任何边缘情况(比如键盘聚焦到了非最上层的卡片)。
 function initMobileStack() {
   const STACK_ORDER = ["cineverse", "skills", "experience", "techstack", "stats", "contact"];
   const CARD_HEIGHT = 220; // 需要和 styles.css 里 .mobile-stack .bento-card 的 height 保持一致
@@ -543,12 +461,7 @@ function initMobileStack() {
   }
 
   function cardEl(moduleId) {
-    // 排除占位 div:展开期间它借用同一个模块名的 class(为了拿到同一条
-    // grid-area 规则,见 initExpandInteractions),会和真正的卡片撞选
-    // 择器——真正的卡片这时已经被 reparent 到 body,但占位 div 还留在
-    // #mobile-stack 里,不排除的话 querySelector 会先匹配到它。
-    const selector = `.bento-card.${moduleId}:not(.bento-card-placeholder)`;
-    return stackEl.querySelector(selector) || document.querySelector(selector);
+    return stackEl.querySelector(`.bento-card.${moduleId}`) || document.querySelector(`.bento-card.${moduleId}`);
   }
 
   function settleTransition(reduceMotion) {
@@ -563,7 +476,7 @@ function initMobileStack() {
     const reduceMotion = prefersReducedMotion();
     order.forEach((moduleId, index) => {
       const card = cardEl(moduleId);
-      if (!card || card === flyingCard || card.classList.contains("is-lifted")) return;
+      if (!card || card === flyingCard || card.classList.contains("is-overlay-active")) return;
       // reduced motion 只改"怎么过渡"(见 settleTransition,弹性曲线
       // 换成简单的 ease),不改层叠本身的静态外观——露出边缘的层叠
       // 视觉不是"动效",没有理由跟着弹性缓动一起被去掉。
@@ -639,7 +552,7 @@ function initMobileStack() {
     const card = event.target.closest(".bento-card");
     if (!card || card.parentElement !== stackEl) return;
     if (card !== cardEl(order[0])) return; // 只有最上层卡片能拖
-    if (card.classList.contains("is-lifted")) return;
+    if (card.classList.contains("is-overlay-active")) return;
 
     drag = {
       card,
@@ -740,15 +653,6 @@ function renderPage() {
   initExpandInteractions();
   initMobileStack();
 }
-
-// 为什么不用 View Transitions API(document.startViewTransition):
-// 它确实能做"同一元素跨状态平滑变形"且自带内容 cross-fade,但截至本
-// 项目开发时 Firefox 仍不完整支持同文档视图过渡,面向 career fair /
-// 面试官临场访问的场景里,不想让效果在不同浏览器上表现不一致,也不想
-// 维护两套动画路径。上面手写的 FLIP(transform 位移缩放 + 内容淡入淡出
-// 顺序编排)已经能精确控制"先长大、再淡入完整内容"的节奏,且只依赖
-// CSS Transitions + transform,兼容性覆盖到所有现代浏览器,没有回退
-// 分支的必要。
 
 // 本文件通过 <script src="render.js"> 加载,不使用 type="module":
 // - 无构建工具,页面可能被直接以 file:// 打开做本地预览,ES module 在

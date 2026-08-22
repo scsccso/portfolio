@@ -23,11 +23,12 @@
     最前)。
 
     内容量较大的模块(Skills / Experience / CineVerse 技术亮点详情)可
-    点击展开:展开时是同一张卡片本身连续放大(reparent 到 body 并用
-    position:fixed + transform 做 FLIP 动画),不是"隐藏原卡片、另外
-    弹出一个新面板"。卡片内部预留 .card-face-summary(摘要,默认可见)
-    与 .card-face-full(完整内容,展开时由 render.js 注入并淡入)两层,
-    以及一个仅在展开时显示的关闭按钮。交互逻辑见 render.js。
+    点击展开:原卡片留在原地不动,只做简单的 opacity 淡出/淡入,不涉及
+    任何位移或形变;完整内容显示在一个独立的弹层里——每次点击都全新
+    创建、关闭动画结束后彻底从 DOM 移除,不是复用同一个持久元素隐藏/
+    显示。弹层不是原卡片本身,原卡片不需要 reparent、不需要处理"同一个
+    元素物理位移"这类复杂度(之前那套机制连续出过三次不同的视觉异常,
+    已放弃)。交互逻辑见 render.js。
   -->
   <main id="bento-grid" class="bento-grid">
     <section class="bento-card identity" id="card-identity" aria-label="Identity">
@@ -46,11 +47,6 @@
         aria-label="Featured project: CineVerse — click to view full details"
       >
         <div id="project-mount" class="mount"></div>
-        <button type="button" class="card-close-btn" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18"></path>
-          </svg>
-        </button>
       </section>
 
       <section
@@ -64,11 +60,6 @@
         aria-label="Skills — click to view full details"
       >
         <div id="skills-mount" class="mount"></div>
-        <button type="button" class="card-close-btn" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18"></path>
-          </svg>
-        </button>
       </section>
 
       <section
@@ -82,11 +73,6 @@
         aria-label="Experience — click to view full details"
       >
         <div id="experience-mount" class="mount"></div>
-        <button type="button" class="card-close-btn" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18"></path>
-          </svg>
-        </button>
       </section>
 
       <section class="bento-card techstack" id="card-techstack" aria-label="Tech stack">
@@ -103,9 +89,8 @@
     </div>
   </main>
 
-  <!-- 展开时的背景遮罩:固定定位,z-index 低于被展开的卡片(见
-       render.js 中卡片被 reparent 到 body 后设为 z-index:200)、高于
-       网格本身,点击可关闭。 -->
+  <!-- 展开时的背景遮罩:固定定位,z-index 低于弹层(弹层 z-index:200,
+       由 render.js 动态创建)、高于网格本身,点击可关闭。 -->
   <div id="expand-backdrop" class="expand-backdrop" aria-hidden="true"></div>
 
   <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释 -->

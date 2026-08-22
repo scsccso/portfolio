@@ -46,7 +46,6 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-  position: relative; /* .card-face-full 的 inset:0 定位基准 */
 }
 
 /* ---------- Bento 网格容器 ----------
@@ -179,8 +178,8 @@ body {
   transition: transform 0.25s var(--ease-out-soft), box-shadow 0.25s var(--ease-out-soft);
 }
 
-.bento-card:hover:not(.is-lifted),
-.bento-card:focus-within:not(.is-lifted) {
+.bento-card:hover:not(.is-overlay-active),
+.bento-card:focus-within:not(.is-overlay-active) {
   transform: translateY(-4px);
   box-shadow:
     0 2px 4px rgba(44, 62, 80, 0.08),
@@ -197,131 +196,32 @@ body {
   outline-offset: 3px;
 }
 
-/* ---------- 点击展开:同一张卡片本身放大 ----------
-   .is-lifted 只负责非几何的视觉状态(阴影、cursor);position/top/left/
-   width/height/transform 全部由 render.js 用内联样式驱动(FLIP 动画,
-   需要精确的数值控制),这里不声明,避免两边打架。 */
+/* ---------- 点击展开:原卡片的状态 ----------
+   独立弹层架构(见 render.js initExpandInteractions):原卡片自始至终
+   留在原地,不做任何位移/缩放,只在展开期间用一个 class 记录状态 +
+   靠 render.js 内联样式做简单的 opacity 淡出/淡入。之前那版让卡片自己
+   reparent + transform 变形的机制连续出过三次不同的视觉异常,已放弃;
+   现在卡片这边的 CSS 状态少到几乎不需要专门声明什么。 */
 
-.bento-card.is-lifted {
+.bento-card.is-overlay-active {
   cursor: default;
-  box-shadow:
-    0 12px 28px rgba(26, 37, 48, 0.22),
-    0 32px 64px rgba(26, 37, 48, 0.32);
-}
-
-/* 网格里占位置的空壳:视觉上不可见,但保留卡片原尺寸,防止卡片脱离
-   网格流(reparent 到 body)的瞬间其余模块跳位重排。 */
-.bento-card-placeholder {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* 展开期间背景其余卡片整体降低存在感:轻微缩小 + 模糊 + 降低透明度,
-   和遮罩叠加在一起构成"这张卡片被拉到最前面"的观感。 */
-.bento-grid.has-lifted-card > .bento-card:not(.is-lifted):not(.bento-card-placeholder) {
+   和遮罩叠加在一起构成"当前这张卡片被拉到最前面"的观感(这部分沿用
+   自旧版,没出过问题)。触发卡片自己走的是简单 opacity 淡出(见
+   render.js),不需要这套缩小/模糊,所以排除在外。 */
+.bento-grid.has-overlay-open > .bento-card:not(.is-overlay-active) {
   transform: scale(0.97);
   filter: blur(1.5px);
   opacity: 0.6;
   transition: transform 350ms var(--ease-out-soft), filter 350ms ease, opacity 350ms ease;
 }
 
-/* 卡片内的两层内容:摘要默认可见,完整内容默认透明地叠在同一块区域
-   之上。展开/收起时两层"顺序"交叉,不是简单对称地互换透明度——
-   每个方向都是"先让当前那层几乎完全消失,再让另一层出现",中途留出
-   几十毫秒的空档,避免两层文字同时半透明地叠在一起看起来混乱(这里
-   踩过坑:最初两层用同一套时长对称切换,展开方向因为时间点错开侥幸
-   没出问题,收起方向摘要几乎瞬间回来、关闭按钮却拖到 350ms 才消失,
-   造成摘要文字和完整内容、关闭按钮和装饰数字同时可见)。 */
-.card-face-summary {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  opacity: 1;
-  /* 收起方向(基准态):等 .card-face-full 基本淡出后再出现 */
-  transition: opacity 150ms ease 140ms;
-}
-
-.card-face-full {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  opacity: 0;
-  pointer-events: none;
-  /* 收起方向(基准态):立刻快速淡出,不等卡片缩完 */
-  transition: opacity 130ms ease;
-}
-
-.bento-card.is-lifted .card-face-summary {
-  opacity: 0;
-  pointer-events: none;
-  /* 展开方向:立刻快速隐藏摘要 */
-  transition: opacity 120ms ease;
-}
-
-.bento-card.is-lifted .card-face-full {
-  opacity: 1;
-  pointer-events: auto;
-  /* 展开方向:摘要基本隐藏后再淡入完整内容 */
-  transition: opacity 260ms ease 150ms;
-}
-
-/* 关闭按钮:平时完全不可见/不可交互,只在卡片展开时出现在右上角。 */
-.card-close-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  /* 收起方向(基准态):快速消失,不拖到卡片都缩完了还留在原地 */
-  transition: opacity 120ms ease, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-}
-
-.card-close-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.bento-card.is-lifted .card-close-btn {
-  opacity: 1;
-  pointer-events: auto;
-  /* 展开方向:卡片长大一点后再出现 */
-  transition: opacity 200ms ease 150ms, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-}
-
-.card-close-btn:hover,
-.card-close-btn:focus-visible {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background-color: var(--color-accent-soft);
-  transform: translateY(-2px);
-}
-
-.card-close-btn:active {
-  transform: translateY(0);
-}
-
-/* 卡片角落装饰数字:低对比度,不遮挡内容。CineVerse 卡片这一个用到
-   128px 的大号版本(见下方 .bento-card.cineverse .card-number),字号
-   越大,被非均匀 scale 压扁的观感就越明显——踩过一次坑:曾经用固定的
-   transition-delay 猜"卡片应该缩得差不多了",但回弹缓动曲线收尾阶段
-   比看起来的长,数字提前于卡片真正静止淡入,字形被卡片当时仍在进行
-   的 scale(sx,sy) 非均匀压扁,看起来像是字符间距异常,其实是"0"和"1"
-   的高度被压扁、宽度基本没变。改成完全交给 render.js 用 .is-morphing
-   类控制:展开开始到收起彻底结束(finalize)之间数字全程不可见,只有
-   render.js 确认卡片的 transform 已经真正归位、不再有任何几何变化
-   之后才移除这个类,数字才开始淡入——不再靠猜时长。 */
+/* 卡片角落装饰数字:低对比度,不遮挡内容。之前"卡片自身变形"的架构
+   下,这里因为非均匀 scale 被压扁过、又因为过渡时序踩过坑——独立弹层
+   架构里原卡片完全不做 transform,只有 opacity 变化,数字不可能再被
+   压扁,这里不需要任何特殊处理。 */
 .card-number {
   position: absolute;
   top: 4px;
@@ -333,15 +233,6 @@ body {
   color: var(--color-border);
   pointer-events: none;
   user-select: none;
-}
-
-.card-face-summary .card-number {
-  transition: opacity 200ms ease;
-}
-
-.bento-card.is-morphing .card-face-summary .card-number {
-  opacity: 0 !important;
-  transition: none !important;
 }
 
 .stack-tags {
@@ -571,9 +462,9 @@ body {
 }
 
 /* ---------- 点击展开:背景遮罩 ----------
-   固定定位、z-index 低于被展开的卡片(卡片 reparent 到 body 后是
-   200)、高于网格本身。显隐只由 .is-visible 控制透明度 + pointer-events,
-   render.js 只负责加/removeClass,不直接摆弄它的内联样式。 */
+   固定定位、z-index 低于弹层(200)、高于网格本身。显隐只由 .is-visible
+   控制透明度 + pointer-events,render.js 只负责加/removeClass,不直接
+   摆弄它的内联样式。 */
 
 .expand-backdrop {
   position: fixed;
@@ -590,7 +481,65 @@ body {
   pointer-events: auto;
 }
 
-/* ---------- 点击展开:.card-face-full 内的完整内容排版 ---------- */
+/* ---------- 点击展开:独立弹层 ----------
+   render.js 每次点击都用 document.createElement 新建这个元素、关闭
+   动画结束后彻底 remove() ——不是复用同一个持久元素隐藏/显示,所以这里
+   不需要声明"默认隐藏"的状态,JS 会在插入 DOM 的同时就设好起始内联
+   样式(opacity:0 + 缩小并偏移到触发卡片中心),这里只提供静态外观。
+   固定定位、水平垂直居中;position/opacity/transform 的动画数值全部由
+   render.js 内联样式驱动。 */
+
+.overlay-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 200;
+  width: min(90vw, 720px);
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 32px;
+  border-radius: 24px;
+  background-color: var(--color-surface);
+  box-shadow:
+    0 10px 24px rgba(26, 37, 48, 0.18),
+    0 30px 60px rgba(26, 37, 48, 0.32);
+}
+
+.overlay-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.overlay-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.overlay-close:hover,
+.overlay-close:focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+  transform: translateY(-2px);
+}
+
+.overlay-close:active {
+  transform: translateY(0);
+}
+
+/* ---------- 点击展开:.overlay-content 内的完整内容排版 ---------- */
 
 .full-title {
   margin: 0 0 20px;
@@ -692,18 +641,12 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* 卡片本身的 transform 动画由 render.js 按 prefersReducedMotion()
-     分支跳过(不设置 scale/translate,只做透明度切换);这里只处理
-     纯 CSS 驱动的部分:内容交叉淡出/淡入、关闭按钮、背景卡片的
-     缩小/模糊/变暗、遮罩,统一收成更快的简单淡入淡出,不用回弹。 */
-  .card-face-summary,
-  .card-face-full,
-  .card-close-btn {
-    transition-duration: 120ms !important;
-    transition-delay: 0s !important;
-  }
-
-  .bento-grid.has-lifted-card > .bento-card:not(.is-lifted):not(.bento-card-placeholder) {
+  /* 弹层本身的 transform 动画由 render.js 按 prefersReducedMotion()
+     分支跳过(全程停在 translate(-50%,-50%) scale(1),只做透明度
+     切换);触发卡片本来就只有简单的 opacity 淡出/淡入,不需要额外
+     处理。这里只处理背景卡片的缩小/模糊/变暗和遮罩,统一收成更快的
+     简单淡入淡出。 */
+  .bento-grid.has-overlay-open > .bento-card:not(.is-overlay-active) {
     transform: none !important;
     filter: none !important;
     transition: opacity 150ms ease !important;
@@ -752,12 +695,12 @@ body {
     -webkit-line-clamp: 1;
   }
 
-  /* CineVerse 摘要面板:去掉 eyebrow / 装饰数字 / 技术栈标签 / GitHub
+  /* CineVerse 摘要卡片:去掉 eyebrow / 装饰数字 / 技术栈标签 / GitHub
      按钮,只留标题 + 一行摘要,其余信息展开后再看 */
-  .card-face-summary .bento-eyebrow,
-  .card-face-summary .card-number,
-  .card-face-summary .stack-tags,
-  .card-face-summary .btn-pill {
+  .bento-card.cineverse .bento-eyebrow,
+  .bento-card.cineverse .card-number,
+  .bento-card.cineverse .stack-tags,
+  .bento-card.cineverse .btn-pill {
     display: none;
   }
 
@@ -818,12 +761,6 @@ body {
     /* 横向手势留给拖拽逻辑(render.js 用 Pointer Events 处理),纵向
        仍允许页面正常滚动,不用 preventDefault 抢事件 */
     touch-action: pan-y;
-  }
-
-  /* 展开中的卡片 reparent 到了 body、position:fixed,几何完全交给
-     点击展开机制自己的内联样式,层叠定位对它不生效 */
-  .mobile-stack .bento-card.is-lifted {
-    position: fixed;
   }
 }
 
