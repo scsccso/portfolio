@@ -9,52 +9,41 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="layout">
-    <aside id="sidebar" class="sidebar">
-      <button
-        id="sidebar-toggle"
-        class="sidebar-toggle"
-        type="button"
-        aria-label="Toggle sidebar menu"
-        aria-expanded="false"
-        aria-controls="sidebar-mount"
-      >
-        <span class="sidebar-toggle-bar"></span>
-        <span class="sidebar-toggle-bar"></span>
-        <span class="sidebar-toggle-bar"></span>
-      </button>
+  <!--
+    Bento 网格布局(见 CLAUDE.md「页面结构」):桌面端一屏内完整展示全部
+    模块,不出现滚动条;平板/手机端堆叠为纵向滚动。模块顺序即 DOM 顺序,
+    身份卡在前,与移动端"身份卡为第一个堆叠模块"的要求天然一致。
+    本轮只搭建骨架与布局,点击展开交互(弹层)留待下一轮实现。
+  -->
+  <main id="bento-grid" class="bento-grid">
+    <section class="bento-card identity" id="card-identity" aria-label="Identity">
+      <div id="identity-mount" class="mount"></div>
+    </section>
 
-      <div id="sidebar-mount" class="mount"></div>
-    </aside>
+    <section class="bento-card cineverse" id="card-cineverse" aria-label="Featured project: CineVerse">
+      <div id="project-mount" class="mount"></div>
+    </section>
 
-    <div class="content">
-      <nav id="tab-nav" class="tab-nav" role="tablist">
-        <ul id="tab-list" class="tab-list"></ul>
-      </nav>
+    <section class="bento-card techstack" id="card-techstack" aria-label="Tech stack">
+      <div id="techstack-mount" class="mount"></div>
+    </section>
 
-      <main id="tab-panels" class="tab-panels">
-        <section id="panel-about" class="tab-panel" data-tab="about" role="tabpanel" aria-labelledby="tab-about">
-          <div id="about-mount" class="mount"></div>
-        </section>
+    <section class="bento-card stats" id="card-stats" aria-label="Key stat">
+      <div id="stats-mount" class="mount"></div>
+    </section>
 
-        <section id="panel-skills" class="tab-panel" data-tab="skills" role="tabpanel" aria-labelledby="tab-skills">
-          <div id="skills-mount" class="mount"></div>
-        </section>
+    <section class="bento-card skills" id="card-skills" aria-label="Skills">
+      <div id="skills-mount" class="mount"></div>
+    </section>
 
-        <section id="panel-project" class="tab-panel" data-tab="project" role="tabpanel" aria-labelledby="tab-project">
-          <div id="project-mount" class="mount"></div>
-        </section>
+    <section class="bento-card experience" id="card-experience" aria-label="Experience">
+      <div id="experience-mount" class="mount"></div>
+    </section>
 
-        <section id="panel-experience" class="tab-panel" data-tab="experience" role="tabpanel" aria-labelledby="tab-experience">
-          <div id="experience-mount" class="mount"></div>
-        </section>
-
-        <section id="panel-contact" class="tab-panel" data-tab="contact" role="tabpanel" aria-labelledby="tab-contact">
-          <div id="contact-mount" class="mount"></div>
-        </section>
-      </main>
-    </div>
-  </div>
+    <section class="bento-card contact" id="card-contact" aria-label="Contact">
+      <div id="contact-mount" class="mount"></div>
+    </section>
+  </main>
 
   <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释 -->
   <script src="content.js"></script>

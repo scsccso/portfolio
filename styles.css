@@ -11,21 +11,29 @@
   --color-accent-soft: #CAD6E2;
   --color-border: #BDC3C7;
 
-  /* 布局尺寸 */
-  --sidebar-width: 260px;
+  /* 身份卡深色渐变(基于 --color-accent / --color-text-primary 色相) */
+  --gradient-identity: linear-gradient(160deg, #3d5a76 0%, #2C3E50 55%, #1a2530 100%);
 
   /* 响应式断点参考值(注:媒体查询条件本身不能用 var(),下方 @media
      仍需写字面量,这里只作为断点数值的单一文档来源) */
   --breakpoint-tablet: 768px;
   --breakpoint-desktop: 1024px;
+
+  /* 统一的弹性过渡曲线,用于 hover 等微交互(轻微回弹见后续点击展开交互) */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
+  height: 100%;
   margin: 0;
+}
+
+body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -33,206 +41,32 @@ body {
 }
 
 .mount {
-  min-height: 1px;
-}
-
-/* ---------- 整体布局:侧边栏 + 主内容区(桌面默认并排,移动端见底部断点) ---------- */
-
-.layout {
   display: flex;
-  min-height: 100vh;
-}
-
-.content {
-  flex: 1;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   min-width: 0;
 }
 
-/* ---------- 侧边栏 ---------- */
+/* ---------- Bento 网格容器 ----------
+   移动优先:默认单列堆叠、允许滚动。≥1024px 切换为一屏 100vh 的
+   grid-template-areas 布局,禁止出现滚动条(见 CLAUDE.md「页面结构」)。 */
 
-.sidebar {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  flex: 0 0 var(--sidebar-width);
-  width: var(--sidebar-width);
-  height: 100vh;
-  overflow-y: auto;
-  padding: 40px 24px;
-  background-color: var(--color-bg);
-  border-right: 1px solid var(--color-border);
-  text-align: center;
+.bento-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.sidebar-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  margin: 0 auto 16px;
-  border-radius: 50%;
-  background-color: var(--color-accent-soft);
-  color: var(--color-text-primary);
-}
-
-.sidebar-avatar svg,
-.sidebar-avatar img {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.sidebar-name {
-  margin: 0 0 12px;
-  font-size: 21px;
-  font-weight: 600;
-}
-
-.sidebar-role {
-  margin: 0 auto 20px;
-  width: fit-content;
-}
-
-.sidebar-contacts {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sidebar-contact-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-
-.sidebar-contact-link svg {
-  width: 16px;
-  height: 16px;
-}
-
-.sidebar-contact-link:hover,
-.sidebar-contact-link:focus-visible {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  transform: translateY(-2px);
-}
-
-.sidebar-contact-link:active {
-  transform: translateY(0);
-}
-
-/* 移动端汉堡按钮:桌面默认隐藏,<768px 断点下显示(见文件底部) */
-.sidebar-toggle {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  width: 36px;
-  height: 36px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-}
-
-.sidebar-toggle:hover,
-.sidebar-toggle:focus-visible {
-  opacity: 0.7;
-}
-
-.sidebar-toggle-bar {
-  width: 20px;
-  height: 2px;
-  background-color: var(--color-text-primary);
-}
-
-/* ---------- Tab 导航 ---------- */
-
-.tab-nav {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tab-list {
-  display: flex;
-  gap: 28px;
-  list-style: none;
-  margin: 0;
-  padding: 0 40px;
-  overflow-x: auto;
-}
-
-.tab-link {
-  display: inline-block;
-  padding: 18px 2px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--color-text-secondary);
-  font-size: 15px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-.tab-link:hover,
-.tab-link:focus-visible {
-  color: var(--color-text-primary);
-}
-
-.tab-link.is-active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
-}
-
-.tab-link:active {
-  opacity: 0.8;
-}
-
-/* ---------- Tab 面板:JS 通过 .is-active 切换显示/隐藏,不做滚动锚点跳转 ---------- */
-
-.tab-panel {
-  display: none;
-  padding: 40px;
-  max-width: 1000px;
-}
-
-.tab-panel.is-active {
-  display: block;
-}
-
-.tab-panel p {
-  max-width: 720px;
-  color: var(--color-text-secondary);
-}
-
-/* ---------- 通用组件:标题 / 卡片 / pill 标签 / 按钮 ---------- */
-
-.section-title {
-  margin: 0 0 20px;
-  font-size: clamp(28px, 3vw, 34px);
-  font-weight: 600;
-  letter-spacing: -0.3px;
-}
+/* ---------- 通用组件:标题 / eyebrow / 卡片 / pill 标签 / 按钮 ---------- */
 
 .eyebrow-badge {
   display: inline-block;
-  padding: 10px 16px;
+  width: fit-content;
+  padding: 8px 16px;
   border-radius: 999px;
   background-color: var(--color-accent-soft);
   color: var(--color-text-primary);
@@ -242,28 +76,103 @@ body {
   letter-spacing: 0.3px;
 }
 
-/* 卡片:白底 + 0.5px 边框 + 轻微圆角,hover 时上浮 + 阴影加深,仅此而已
-   (不使用背景渐变/发光/倾斜跟随,见 CLAUDE.md「装饰手法」) */
-.card {
-  position: relative;
-  padding: 24px;
-  border-radius: 14px;
-  border: 0.5px solid var(--color-border);
-  background-color: var(--color-surface);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.bento-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 
-.card:hover,
-.card:focus-within {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+.bento-card-title {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.bento-card-summary {
+  margin: 0 0 14px;
+  max-width: 60ch;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bento-card-caption {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+}
+
+.bento-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+}
+
+.bento-summary-list li {
+  position: relative;
+  padding-left: 14px;
+}
+
+.bento-summary-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+}
+
+.bento-summary-list strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* 卡片:白底 + 0.5px 边框 + 轻微圆角,hover 上浮 + 多层阴影加深。
+   身份卡使用深色渐变覆盖,CineVerse 模块叠加大装饰数字,其余模块保持
+   白底卡片基调(见 CLAUDE.md「视觉规范」)。 */
+.bento-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-radius: 20px;
+  border: 0.5px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow:
+    0 1px 2px rgba(44, 62, 80, 0.06),
+    0 10px 24px rgba(44, 62, 80, 0.06);
+  overflow: hidden;
+  transition: transform 0.25s var(--ease-out-soft), box-shadow 0.25s var(--ease-out-soft);
+}
+
+.bento-card:hover,
+.bento-card:focus-within {
+  transform: translateY(-4px);
+  box-shadow:
+    0 2px 4px rgba(44, 62, 80, 0.08),
+    0 18px 36px rgba(44, 62, 80, 0.12);
 }
 
 /* 卡片角落装饰数字:低对比度,不遮挡内容 */
 .card-number {
   position: absolute;
-  top: 8px;
-  right: 16px;
+  top: 4px;
+  right: 20px;
   z-index: 0;
   font-size: 40px;
   font-weight: 700;
@@ -273,19 +182,17 @@ body {
   user-select: none;
 }
 
-.card h3,
-.card p {
-  position: relative;
-  z-index: 1;
-}
-
 .stack-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   list-style: none;
-  margin: 20px 0;
+  margin: 0 0 16px;
   padding: 0;
+}
+
+.stack-tags.compact {
+  gap: 6px;
 }
 
 .stack-tag {
@@ -294,12 +201,18 @@ body {
   border-radius: 999px;
   background-color: var(--color-accent-soft);
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+}
+
+.compact .stack-tag {
+  padding: 4px 11px;
+  font-size: 12px;
 }
 
 .btn-pill {
   display: inline-block;
+  width: fit-content;
   padding: 10px 24px;
   border-radius: 999px;
   background-color: var(--color-accent);
@@ -319,6 +232,11 @@ body {
   transform: translateY(0);
 }
 
+.btn-pill-sm {
+  padding: 8px 18px;
+  font-size: 13.5px;
+}
+
 .btn-pill-outline {
   background-color: transparent;
   color: var(--color-accent);
@@ -331,150 +249,236 @@ body {
   box-shadow: none;
 }
 
-/* ---------- Skills:等宽网格卡片,不使用不规则 bento 拼接 ---------- */
+/* ---------- 身份卡 ---------- */
 
-.skills-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+.bento-card.identity {
+  color: #fff;
+  background: var(--gradient-identity);
+  border: none;
+  box-shadow:
+    0 2px 4px rgba(26, 37, 48, 0.3),
+    0 24px 48px rgba(26, 37, 48, 0.35);
 }
 
-.skills-category h3 {
+.bento-card.identity:hover,
+.bento-card.identity:focus-within {
+  box-shadow:
+    0 4px 8px rgba(26, 37, 48, 0.35),
+    0 30px 56px rgba(26, 37, 48, 0.4);
+}
+
+.identity-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.identity-avatar svg,
+.identity-avatar img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.identity-name {
   margin: 0 0 12px;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
-.skills-category .stack-tags {
-  margin: 0;
+.identity-role {
+  margin-bottom: 18px;
 }
 
-/* ---------- Project — CineVerse ---------- */
-
-.project-cta {
-  margin: 8px 0 32px;
-}
-
-.highlights-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-
-.highlight-card h3 {
-  margin: 0 0 8px;
-  padding-right: 40px;
-  font-size: 17px;
-}
-
-.highlight-card p {
-  margin: 0;
+.identity-about {
+  margin: 0 0 20px;
+  max-width: 42ch;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 14px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* ---------- Experience:简洁时间线列表 ---------- */
-
-.experience-item {
-  padding: 4px 0 24px 20px;
-  border-left: 2px solid var(--color-border);
+.identity-contacts {
+  display: flex;
+  gap: 10px;
+  list-style: none;
+  margin: auto 0 0;
+  padding: 0;
 }
 
-.experience-item h3 {
-  margin: 0 0 4px;
-  font-size: 17px;
-  font-weight: 600;
+.identity-contact-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.85);
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
-.experience-role {
-  margin: 0 0 8px;
-  font-size: 13px;
+.identity-contact-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+.identity-contact-link:hover,
+.identity-contact-link:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.identity-contact-link:active {
+  transform: translateY(0);
+}
+
+/* ---------- CineVerse 项目大模块 ---------- */
+
+.bento-card.cineverse .card-number {
+  top: -18px;
+  right: 24px;
+  font-size: 128px;
+  color: var(--color-accent-soft);
+}
+
+.cineverse-title {
+  font-size: clamp(22px, 2.4vw, 30px);
+}
+
+/* ---------- 关键数字卡 ---------- */
+
+.bento-card.stats .mount {
+  justify-content: center;
+}
+
+.stats-value {
+  display: block;
+  font-size: clamp(38px, 4vw, 54px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--color-accent), #6d88a3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.stats-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.stats-caption {
+  margin-top: 6px;
   color: var(--color-text-secondary);
+  font-size: 12px;
 }
 
-/* ---------- Contact ---------- */
+/* ---------- 联系方式模块:标题/说明在左,按钮组在右 ---------- */
+
+.bento-card.contact .mount {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
 
 .contact-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 8px;
+  gap: 10px;
 }
 
 /* ============================================================
    响应式断点(三档)
    ============================================================ */
 
-/* 手机: <768px —— 侧边栏收起为顶部可展开区域,汉堡按钮控制展开/收起 */
+/* 手机: <768px —— 单列堆叠,身份卡为第一个模块,允许纵向滚动 */
 @media (max-width: 767px) {
-  .layout {
+  .bento-card.contact .mount {
     flex-direction: column;
+    align-items: flex-start;
   }
 
-  .sidebar {
-    flex: 0 0 auto;
-    position: relative;
-    top: auto;
-    width: 100%;
-    height: auto;
-    overflow: visible;
-    padding: 20px 56px 20px 20px;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
-    text-align: left;
-  }
-
-  .sidebar-toggle {
-    display: flex;
-    position: absolute;
-    top: 16px;
+  /* 卡片变窄后收缩装饰数字,避免遮挡 CineVerse 描述文字 */
+  .bento-card.cineverse .card-number {
+    top: 2px;
     right: 16px;
+    font-size: 56px;
   }
 
-  .sidebar-avatar,
-  .sidebar-contacts {
-    display: none;
-  }
-
-  .sidebar.is-open .sidebar-avatar {
-    display: flex;
-  }
-
-  .sidebar.is-open .sidebar-contacts {
-    display: flex;
-    justify-content: flex-start;
-    margin-top: 16px;
-  }
-
-  .sidebar-name {
-    font-size: 19px;
-  }
-
-  .sidebar-role {
-    margin: 0;
-  }
-
-  .tab-list {
-    gap: 20px;
-    padding: 0 20px;
-  }
-
-  .tab-panel {
-    padding: 24px 20px;
-  }
-
-  .skills-grid,
-  .highlights-grid {
-    grid-template-columns: 1fr;
+  .bento-card.cineverse .bento-card-summary {
+    max-width: 78%;
   }
 }
 
-/* 平板: 768px–1023px */
+/* 平板: 768px–1023px —— 2 栏堆叠,身份卡与 CineVerse 占满整行 */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .skills-grid {
+  .bento-grid {
     grid-template-columns: repeat(2, 1fr);
+    max-width: 900px;
+    padding: 28px;
   }
 
-  .highlights-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .bento-card.identity,
+  .bento-card.cineverse {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 桌面: ≥1024px —— 一屏 100vh bento 网格,禁止出现滚动条 */
+@media (min-width: 1024px) {
+  html,
+  body {
+    overflow: hidden;
+  }
+
+  .bento-grid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 1.35fr 1fr 1fr;
+    grid-template-areas:
+      "identity cineverse cineverse cineverse"
+      "identity techstack stats skills"
+      "experience experience contact contact";
+    max-width: 1400px;
+    height: 100vh;
+    gap: 20px;
+    padding: 28px;
+  }
+
+  .bento-card.identity { grid-area: identity; }
+  .bento-card.cineverse { grid-area: cineverse; }
+  .bento-card.techstack { grid-area: techstack; }
+  .bento-card.stats { grid-area: stats; }
+  .bento-card.skills { grid-area: skills; }
+  .bento-card.experience { grid-area: experience; }
+  .bento-card.contact { grid-area: contact; }
+
+  .bento-card {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .identity-about {
+    -webkit-line-clamp: 5;
   }
 }
