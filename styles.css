@@ -50,17 +50,28 @@ body {
 }
 
 /* ---------- Bento 网格容器 ----------
-   移动优先:默认单列堆叠、允许滚动。≥1024px 切换为一屏 100vh 的
-   grid-template-areas 布局,禁止出现滚动条(见 CLAUDE.md「页面结构」)。 */
+   三档断点各自定义完整的 grid-template-columns/rows/areas(见文件底部
+   响应式区块),这里只放三档共用的默认值。手机端(<768px)是 2 列紧凑
+   具名区域网格,身份卡较大、其余模块只露出标题;平板简单 2 栏堆叠;
+   桌面 ≥1024px 是一屏 100vh 的 4 列具名区域网格,禁止出现滚动条
+   (见 CLAUDE.md「页面结构」)。 */
 
 .bento-grid {
   display: grid;
-  grid-template-columns: 1fr;
   gap: 20px;
-  max-width: 640px;
   margin: 0 auto;
-  padding: 20px;
 }
+
+/* grid-area 赋值和视口无关,手机(2 列)、桌面(4 列)两套具名区域网格
+   共用同一批名字,平板不使用具名区域(见平板断点里的 grid-template-
+   areas: none 显式重置),放在这里三档通用,不必重复三遍。 */
+.bento-card.identity { grid-area: identity; }
+.bento-card.cineverse { grid-area: cineverse; }
+.bento-card.techstack { grid-area: techstack; }
+.bento-card.stats { grid-area: stats; }
+.bento-card.skills { grid-area: skills; }
+.bento-card.experience { grid-area: experience; }
+.bento-card.contact { grid-area: contact; }
 
 /* ---------- 通用组件:标题 / eyebrow / 卡片 / pill 标签 / 按钮 ---------- */
 
@@ -208,15 +219,20 @@ body {
 }
 
 /* 卡片内的两层内容:摘要默认可见,完整内容默认透明地叠在同一块区域
-   之上,展开时二者交叉淡出/淡入(完整内容延迟一小段,让"先长大、
-   再显示细节"更明显,呼应 CLAUDE.md 的描述)。 */
+   之上。展开/收起时两层"顺序"交叉,不是简单对称地互换透明度——
+   每个方向都是"先让当前那层几乎完全消失,再让另一层出现",中途留出
+   几十毫秒的空档,避免两层文字同时半透明地叠在一起看起来混乱(这里
+   踩过坑:最初两层用同一套时长对称切换,展开方向因为时间点错开侥幸
+   没出问题,收起方向摘要几乎瞬间回来、关闭按钮却拖到 350ms 才消失,
+   造成摘要文字和完整内容、关闭按钮和装饰数字同时可见)。 */
 .card-face-summary {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   opacity: 1;
-  transition: opacity 120ms ease;
+  /* 收起方向(基准态):等 .card-face-full 基本淡出后再出现 */
+  transition: opacity 150ms ease 140ms;
 }
 
 .card-face-full {
@@ -225,17 +241,21 @@ body {
   overflow-y: auto;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 220ms ease;
+  /* 收起方向(基准态):立刻快速淡出,不等卡片缩完 */
+  transition: opacity 130ms ease;
 }
 
 .bento-card.is-lifted .card-face-summary {
   opacity: 0;
   pointer-events: none;
+  /* 展开方向:立刻快速隐藏摘要 */
+  transition: opacity 120ms ease;
 }
 
 .bento-card.is-lifted .card-face-full {
   opacity: 1;
   pointer-events: auto;
+  /* 展开方向:摘要基本隐藏后再淡入完整内容 */
   transition: opacity 260ms ease 150ms;
 }
 
@@ -257,7 +277,8 @@ body {
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms ease 150ms, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  /* 收起方向(基准态):快速消失,不拖到卡片都缩完了还留在原地 */
+  transition: opacity 120ms ease, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .card-close-btn svg {
@@ -268,6 +289,8 @@ body {
 .bento-card.is-lifted .card-close-btn {
   opacity: 1;
   pointer-events: auto;
+  /* 展开方向:卡片长大一点后再出现 */
+  transition: opacity 200ms ease 150ms, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .card-close-btn:hover,
@@ -282,7 +305,10 @@ body {
   transform: translateY(0);
 }
 
-/* 卡片角落装饰数字:低对比度,不遮挡内容 */
+/* 卡片角落装饰数字:低对比度,不遮挡内容。过渡进行中必须完全不可见——
+   只在卡片彻底收起或彻底展开的静止状态下才显示,不跟随 .card-face-
+   summary 的渐变同步淡入,否则尺寸剧烈变化的过程中数字会和关闭按钮、
+   完整内容层叠在一起显得凌乱。 */
 .card-number {
   position: absolute;
   top: 4px;
@@ -294,6 +320,18 @@ body {
   color: var(--color-border);
   pointer-events: none;
   user-select: none;
+}
+
+.card-face-summary .card-number {
+  /* 收起方向(基准态):等关闭按钮、完整内容都已消失/卡片基本缩完
+     再淡入,是这一圈交叉动画里最后出现的元素 */
+  transition: opacity 130ms ease 170ms;
+}
+
+.bento-card.is-lifted .card-face-summary .card-number {
+  opacity: 0;
+  /* 展开方向:立刻隐藏,不等 */
+  transition: opacity 90ms ease;
 }
 
 .stack-tags {
@@ -670,29 +708,104 @@ body {
    响应式断点(三档)
    ============================================================ */
 
-/* 手机: <768px —— 单列堆叠,身份卡为第一个模块,允许纵向滚动 */
+/* 手机: <768px —— 2 列紧凑具名区域网格,模块只露出标题(视情况带一行
+   摘要),完整内容一律靠点击展开获取(展开机制与桌面端共用,见
+   render.js)。身份卡跨 2 行、可以比其它模块大;其余六个模块大小相近。
+   目标是常见机型(如 390×844)基本一屏容纳、尽量不用滚动,不是"每个
+   模块占满宽度纵向堆叠"的简单方案(见 CLAUDE.md「页面结构」)。 */
 @media (max-width: 767px) {
+  .bento-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(4, 1fr);
+    grid-template-areas:
+      "identity   cineverse"
+      "identity   techstack"
+      "stats      skills"
+      "experience contact";
+    gap: 10px;
+    max-width: 480px;
+    padding: 14px;
+    /* 100vh 是兜底;支持 dvh 的浏览器用它排除地址栏拉伸/收起的影响 */
+    min-height: calc(100vh - 28px);
+    min-height: calc(100dvh - 28px);
+  }
+
+  .bento-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  /* 标题仍 ≥16px(见 CLAUDE.md「手机端要求」);摘要/说明性文字空间
+     不够,精简为一行 */
+  .bento-card-title {
+    font-size: 16px;
+  }
+
+  .bento-card-summary,
+  .bento-card-caption {
+    -webkit-line-clamp: 1;
+  }
+
+  /* CineVerse 摘要面板:去掉 eyebrow / 装饰数字 / 技术栈标签 / GitHub
+     按钮,只留标题 + 一行摘要,其余信息展开后再看 */
+  .card-face-summary .bento-eyebrow,
+  .card-face-summary .card-number,
+  .card-face-summary .stack-tags,
+  .card-face-summary .btn-pill {
+    display: none;
+  }
+
+  /* Skills / Experience 摘要面板:只留标题,分类/公司列表展开后再看 */
+  .bento-summary-list {
+    display: none;
+  }
+
+  /* Tech Stack 摘要:这个宽度放不下标签列表;CineVerse 卡片展开后
+     本身就有完整技术栈,这里不用重复一遍 */
+  .bento-card.techstack .stack-tags {
+    display: none;
+  }
+
+  /* 身份卡:紧凑网格里允许比其它模块大(跨 2 行),头像/About 适度收窄 */
+  .identity-avatar {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 10px;
+  }
+
+  .identity-name {
+    font-size: 19px;
+  }
+
+  .identity-about {
+    -webkit-line-clamp: 3;
+  }
+
+  /* Contact:不可展开,保留真实链接按钮,去掉说明文字、按钮改紧凑竖排 */
+  .bento-card.contact .bento-card-caption {
+    display: none;
+  }
+
   .bento-card.contact .mount {
     flex-direction: column;
     align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
   }
 
-  /* 卡片变窄后收缩装饰数字,避免遮挡 CineVerse 描述文字 */
-  .bento-card.cineverse .card-number {
-    top: 2px;
-    right: 16px;
-    font-size: 56px;
-  }
-
-  .bento-card.cineverse .bento-card-summary {
-    max-width: 78%;
+  .contact-actions {
+    gap: 6px;
   }
 }
 
-/* 平板: 768px–1023px —— 2 栏堆叠,身份卡与 CineVerse 占满整行 */
+/* 平板: 768px–1023px —— 2 栏堆叠,身份卡与 CineVerse 占满整行,展示
+   完整摘要内容(不做手机端那种精简裁剪)。显式重置 grid-template-
+   areas,避免继承手机端的具名区域网格导致 grid-area 赋值和这里的
+   auto-placement/grid-column 混在一起。 */
 @media (min-width: 768px) and (max-width: 1023px) {
   .bento-grid {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-areas: none;
     max-width: 900px;
     padding: 28px;
   }
@@ -722,14 +835,6 @@ body {
     gap: 20px;
     padding: 28px;
   }
-
-  .bento-card.identity { grid-area: identity; }
-  .bento-card.cineverse { grid-area: cineverse; }
-  .bento-card.techstack { grid-area: techstack; }
-  .bento-card.stats { grid-area: stats; }
-  .bento-card.skills { grid-area: skills; }
-  .bento-card.experience { grid-area: experience; }
-  .bento-card.contact { grid-area: contact; }
 
   .bento-card {
     min-height: 0;
