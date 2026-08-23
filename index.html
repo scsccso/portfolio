@@ -1,104 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- TODO: SEO / Open Graph 标签,待与用户确认后添加(见 CLAUDE.md「尚未锁定事项」) -->
-  <!-- TODO: 姓名文案确定后更新 <title> -->
-  <title>Portfolio</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio</title>
+<meta name="description" content="Software engineering portfolio.">
+<meta name="theme-color" content="#F5F5F7">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='12' height='12' rx='3' fill='%230071E3'/%3E%3Crect x='17' y='3' width='12' height='12' rx='3' fill='%231D1D1F'/%3E%3Crect x='3' y='17' width='12' height='12' rx='3' fill='%231D1D1F'/%3E%3Crect x='17' y='17' width='12' height='12' rx='3' fill='%230071E3'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!--
-    Bento 网格布局(见 CLAUDE.md「页面结构」):桌面端一屏内完整展示全部
-    模块,不出现滚动条;平板简单 2 栏堆叠;手机端(<768px)是 Apple
-    Wallet 风格的层叠卡片(见 #mobile-stack),不是网格也不是纵向堆叠。
-    身份卡固定在最上方,不参与层叠顺序。
+<noscript><p style="padding:24px;font:16px/1.5 sans-serif;">This site needs JavaScript enabled to render.</p></noscript>
 
-    #mobile-stack 包裹除身份卡外的六个模块:平板/桌面端它是
-    display:contents(自己不生成盒子,子元素直接参与 .bento-grid 的
-    网格布局,和不存在这层包裹时完全一样);只有手机端才变成层叠卡片的
-    定位容器,子元素 position:absolute 由 render.js 按堆叠顺序摆放,
-    支持 Pointer Events 拖拽切换。DOM 顺序即初始堆叠顺序(cineverse 在
-    最前)。
+<a class="skip-link" href="#main">Skip to content</a>
 
-    内容量较大的模块(Skills / Experience / CineVerse 技术亮点详情)可
-    点击展开:用浏览器原生 View Transitions API(document.startViewTransition
-    + view-transition-name)驱动"卡片变形为全屏面板"的过渡——卡片和
-    面板动态共享同一个 view-transition-name,浏览器自动拍摄前后快照并
-    插值动画,不需要手写 transform/opacity 同步逻辑。完整内容显示在一个
-    独立的弹层里,每次点击都全新创建、关闭后彻底从 DOM 移除(document.
-    createElement / remove(),不是复用同一个持久元素隐藏/显示)。原卡片
-    自身只是 visibility:hidden,不 reparent、不做任何手写位移或形变
-    (之前手写 FLIP 和手写弹层缩放两套机制先后都出过视觉异常,已放弃)。
-    不支持该 API 的浏览器会跳过动画直接切换 DOM,核心功能不受影响。
-    交互逻辑见 render.js。
-  -->
-  <main id="bento-grid" class="bento-grid">
-    <section class="bento-card identity" id="card-identity" aria-label="Identity">
-      <div id="identity-mount" class="mount"></div>
+<nav class="nav" id="nav">
+  <div class="nav__inner container">
+    <button class="nav__logo" id="nav-logo" type="button" aria-label="Scroll to top" data-hook="nav-logo"></button>
+
+    <ul class="nav__links" id="nav-links" data-hook="nav-links"></ul>
+
+    <div class="nav__actions">
+      <button class="nav__cmdk-hint" id="cmdk-trigger" type="button" aria-label="Open command palette">
+        <span class="nav__cmdk-hint-icon" aria-hidden="true">⌘</span><span>K</span>
+      </button>
+      <button class="nav__hamburger" id="hamburger" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="nav__mobile-menu" id="mobile-menu">
+    <ul id="mobile-nav-links" data-hook="mobile-nav-links"></ul>
+    <button class="btn btn--secondary" id="mobile-cmdk-trigger" type="button">Open command palette (⌘K)</button>
+  </div>
+</nav>
+
+<div class="cmdk" id="cmdk" aria-hidden="true">
+  <div class="cmdk__backdrop" id="cmdk-backdrop"></div>
+  <div class="cmdk__panel" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="cmdk__input-row">
+      <svg class="cmdk__search-icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="cmdk-input" class="cmdk__input" placeholder="Type a command or search…" autocomplete="off" aria-label="Command search" role="combobox" aria-expanded="true" aria-controls="cmdk-list">
+      <kbd class="cmdk__esc">Esc</kbd>
+    </div>
+    <ul class="cmdk__list" id="cmdk-list" role="listbox"></ul>
+  </div>
+</div>
+
+<div class="cv-cursor" id="cv-cursor" aria-hidden="true"><span>View</span></div>
+
+<main id="main">
+  <div class="bento container" id="bento">
+
+    <section class="card card--hero" id="hero">
+      <div class="hero__spotlight" id="hero-spotlight" aria-hidden="true"></div>
+      <div class="hero__content">
+        <p class="hero__greeting" data-hook="hero-greeting"></p>
+        <h1 class="hero__name" id="hero-name" data-hook="hero-name"></h1>
+        <p class="hero__tagline" data-hook="hero-tagline"></p>
+        <a class="btn btn--primary btn-magnetic" id="hero-cta" data-hook="hero-cta" href="#cineverse"></a>
+      </div>
+      <div class="hero__sentinel" id="hero-sentinel" aria-hidden="true"></div>
     </section>
 
-    <div id="mobile-stack" class="mobile-stack">
-      <section
-        class="bento-card cineverse is-expandable"
-        id="card-cineverse"
-        data-expand="cineverse"
-        tabindex="0"
-        role="button"
-        aria-haspopup="true"
-        aria-expanded="false"
-        aria-label="Featured project: CineVerse — click to view full details"
-      >
-        <div id="project-mount" class="mount"></div>
-      </section>
+    <div class="cv-tilt-wrap">
+      <article class="card card--cineverse" id="cineverse">
+        <div class="cv-glare" aria-hidden="true"></div>
 
-      <section
-        class="bento-card skills is-expandable"
-        id="card-skills"
-        data-expand="skills"
-        tabindex="0"
-        role="button"
-        aria-haspopup="true"
-        aria-expanded="false"
-        aria-label="Skills — click to view full details"
-      >
-        <div id="skills-mount" class="mount"></div>
-      </section>
+        <div class="cv-header">
+          <p class="cv-label" data-hook="cv-label"></p>
+          <h2 class="cv-title" data-hook="cv-title"></h2>
+          <p class="cv-subtitle" data-hook="cv-subtitle"></p>
+          <div class="cv-tags" data-hook="cv-tags"></div>
+        </div>
 
-      <section
-        class="bento-card experience is-expandable"
-        id="card-experience"
-        data-expand="experience"
-        tabindex="0"
-        role="button"
-        aria-haspopup="true"
-        aria-expanded="false"
-        aria-label="Experience — click to view full details"
-      >
-        <div id="experience-mount" class="mount"></div>
-      </section>
+        <div class="cv-code">
+          <div class="cv-code__titlebar">
+            <span class="cv-code__dots" aria-hidden="true"><span class="is-red"></span><span class="is-yellow"></span><span class="is-green"></span></span>
+            <span class="cv-code__filename" data-hook="cv-code-filename"></span>
+            <span class="cv-code__pills" data-hook="cv-code-pills"></span>
+          </div>
+          <pre class="cv-code__body"><code data-hook="cv-code-lines"></code></pre>
+        </div>
 
-      <section class="bento-card techstack" id="card-techstack" aria-label="Tech stack">
-        <div id="techstack-mount" class="mount"></div>
-      </section>
+        <div class="cv-lock-demo" aria-hidden="true">
+          <div class="cv-lock-demo__requests" data-hook="cv-lock-requests"></div>
+          <div class="cv-lock-demo__lock">
+            <span class="cv-lock-icon" id="cv-lock-icon"></span>
+            <span class="cv-lock-demo__key" data-hook="cv-lock-key"></span>
+          </div>
+        </div>
 
-      <section class="bento-card stats" id="card-stats" aria-label="Key stat">
-        <div id="stats-mount" class="mount"></div>
-      </section>
-
-      <section class="bento-card contact" id="card-contact" aria-label="Contact">
-        <div id="contact-mount" class="mount"></div>
-      </section>
+        <div class="cv-footer">
+          <a class="cv-external-link" data-hook="cv-github-link" target="_blank" rel="noopener"></a>
+          <button class="cv-expand-hint" type="button" data-hook="cv-expand-hint"></button>
+        </div>
+      </article>
     </div>
-  </main>
 
-  <!-- 展开时的背景遮罩:固定定位,z-index 低于弹层(弹层 z-index:200,
-       由 render.js 动态创建)、高于网格本身,点击可关闭。 -->
-  <div id="expand-backdrop" class="expand-backdrop" aria-hidden="true"></div>
+    <article class="card card--about" id="about">
+      <h2 class="card__heading" data-hook="about-heading"></h2>
+      <div class="card__body" data-hook="about-body"></div>
+    </article>
 
-  <!-- 普通 script(非 type="module"):理由见 render.js 顶部注释 -->
-  <script src="content.js"></script>
-  <script src="render.js"></script>
+    <article class="card card--skills" id="skills">
+      <h2 class="card__heading" data-hook="skills-heading"></h2>
+      <div class="card__body" data-hook="skills-body"></div>
+    </article>
+
+    <article class="card card--experience" id="experience">
+      <h2 class="card__heading" data-hook="experience-heading"></h2>
+      <div class="card__body" data-hook="experience-body"></div>
+    </article>
+
+    <article class="card card--contact" id="contact">
+      <h2 class="card__heading" data-hook="contact-heading"></h2>
+      <div class="card__body" data-hook="contact-body"></div>
+    </article>
+
+    <article class="card card--github" id="github">
+      <div class="gh__header">
+        <h2 class="card__heading">GitHub Activity</h2>
+        <a class="gh__username" data-hook="gh-username" target="_blank" rel="noopener"></a>
+      </div>
+
+      <div class="gh__stats" data-hook="gh-stats"></div>
+
+      <div class="gh__heatmap-wrap">
+        <div class="gh__heatmap" data-hook="gh-heatmap"></div>
+      </div>
+
+      <div class="gh__languages" data-hook="gh-languages"></div>
+
+      <div class="gh__pinned" data-hook="gh-pinned"></div>
+    </article>
+
+  </div>
+</main>
+
+<div class="cv-overlay" id="cv-overlay" aria-hidden="true">
+  <div class="cv-overlay__panel" role="dialog" aria-modal="true" aria-label="CineVerse case study">
+    <button class="cv-overlay__close" id="cv-overlay-close" type="button" aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="4" x2="4" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="cv-overlay__scroll">
+      <p class="cv-overlay__eyebrow">Case Study</p>
+      <h2 class="cv-overlay__title" data-hook="cv-overlay-title"></h2>
+
+      <h3 class="cv-overlay__section-heading">File Structure</h3>
+      <ul class="cv-tree" data-hook="cv-tree"></ul>
+
+      <h3 class="cv-overlay__section-heading">Technical Decisions</h3>
+      <div class="cv-decisions" data-hook="cv-decisions"></div>
+    </div>
+  </div>
+</div>
+
+<div class="terminal" id="terminal">
+  <button class="terminal__toggle" id="terminal-toggle" type="button" aria-label="Open terminal" aria-expanded="false" aria-controls="terminal-window">&gt;_</button>
+  <div class="terminal__window" id="terminal-window">
+    <div class="terminal__titlebar">
+      <span class="terminal__dots" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span>guest@portfolio:~</span>
+      <button class="terminal__close" id="terminal-close" type="button" aria-label="Close terminal">✕</button>
+    </div>
+    <div class="terminal__output" id="terminal-output" role="log" aria-live="polite"></div>
+    <div class="terminal__input-row">
+      <span aria-hidden="true">&gt;</span>
+      <input type="text" id="terminal-input" class="terminal__input" autocomplete="off" spellcheck="false" aria-label="Terminal input">
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <p data-hook="footer-text"></p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+<script src="content.js"></script>
+<script src="render.js"></script>
 </body>
 </html>

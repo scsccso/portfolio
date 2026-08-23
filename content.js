@@ -1,118 +1,230 @@
-// content.js — 所有文案 / 内容数据。render.js 从这里读取数据渲染 DOM。
-// 数据结构按 bento 网格模块组织:身份卡(identity)/CineVerse项目(project)/
-// 技术栈(techStack)/关键数字(stats)/技能(skills)/工作经历(experience)/
-// 联系方式(contact)。含 "summary"/"caption" 字段的模块用于网格内的
-// 摘要展示(点击展开显示完整内容的交互见后续版本,本轮暂不实现)。
-// 已加 TODO 注释的字符串字段,需在拿到真实文案后原样替换。
+/**
+ * Single source of truth for all copy and data on the site.
+ * Swap placeholder values here — render.js never hardcodes content.
+ */
+const CONTENT = {
+  site: {
+    name: "Your Name",
+    role: "Full-Stack Software Engineer",
+    monogram: "YN",
+    email: "hello@example.com",
+    githubUrl: "https://github.com/yourusername",
+    githubUsername: "yourusername",
+    resumeUrl: "#",
+  },
 
-const content = {
-  identity: {
-    name: "Ong Shan Chun",
-    role: "Software Engineer · Backend-Focused",
-    // TODO: 头像图片路径,视觉素材来源未定(见 CLAUDE.md「尚未锁定事项」)。
-    // 为 null 时 render.js 渲染占位图标。
-    avatar: null,
+  nav: [
+    { label: "About", target: "about" },
+    { label: "Skills", target: "skills" },
+    { label: "CineVerse", target: "cineverse" },
+    { label: "Experience", target: "experience" },
+    { label: "Contact", target: "contact" },
+  ],
+
+  hero: {
+    greeting: "Hi, I'm",
+    name: "Your Name",
+    tagline: "Full-stack engineer who cares about the details most people skip.",
+    cta: { label: "View CineVerse", target: "cineverse" },
+  },
+
+  cineverse: {
+    label: "Featured Project",
+    title: "CineVerse",
+    subtitle: "A full-stack cinema ticketing platform built for concurrency at scale.",
+    tags: ["Java", "Spring Boot", "PostgreSQL", "Redis"],
+    expandHint: "View case study",
+    githubUrl: "https://github.com/yourusername/cineverse",
+    githubLabel: "View source",
+
+    code: {
+      filename: "DistributedLock.java",
+      language: "Java",
+      badge: "Redis",
+      lines: [
+        "public class DistributedLock {",
+        "",
+        "    private final StringRedisTemplate redis;",
+        '    private static final String PREFIX = "lock:seat:";',
+        "",
+        "    public boolean tryLock(String seatId, String owner, Duration ttl) {",
+        "        String key = PREFIX + seatId;",
+        "        Boolean ok = redis.opsForValue()",
+        "                .setIfAbsent(key, owner, ttl);",
+        "        return Boolean.TRUE.equals(ok);",
+        "    }",
+        "",
+        "    public void unlock(String seatId, String owner) {",
+        "        String key = PREFIX + seatId;",
+        "        if (owner.equals(redis.opsForValue().get(key))) {",
+        "            redis.delete(key);",
+        "        }",
+        "    }",
+        "}",
+      ],
+    },
+
+    lockDemo: {
+      caption: "SETNX lock:seat:14B",
+      requests: [
+        { id: "a", label: "Request A" },
+        { id: "b", label: "Request B" },
+        { id: "c", label: "Request C" },
+      ],
+      idleText: "Idle",
+      lockedText: "Lock acquired",
+      blockedText: "Lock held",
+    },
+
+    fileTree: {
+      name: "cineverse/",
+      type: "folder",
+      children: [
+        {
+          name: "src/main/java/com/cineverse/",
+          type: "folder",
+          children: [
+            {
+              name: "booking/",
+              type: "folder",
+              children: [
+                { name: "BookingController.java", type: "file" },
+                { name: "BookingService.java", type: "file" },
+                { name: "SeatLockService.java", type: "file" },
+              ],
+            },
+            {
+              name: "payment/",
+              type: "folder",
+              children: [
+                { name: "StripeWebhookController.java", type: "file" },
+                { name: "PaymentReconciliationJob.java", type: "file" },
+              ],
+            },
+            {
+              name: "auth/",
+              type: "folder",
+              children: [
+                { name: "JwtTokenProvider.java", type: "file" },
+                { name: "RefreshTokenService.java", type: "file" },
+              ],
+            },
+            {
+              name: "common/redis/",
+              type: "folder",
+              children: [
+                { name: "DistributedLock.java", type: "file", current: true },
+              ],
+            },
+            { name: "CineVerseApplication.java", type: "file" },
+          ],
+        },
+        { name: "src/main/resources/application.yml", type: "file" },
+        { name: "pom.xml", type: "file" },
+      ],
+    },
+
+    decisions: [
+      {
+        title: "JWT refresh token rotation",
+        body: "Access tokens are short-lived. Every refresh issues a brand-new refresh token and invalidates the old one, so a stolen refresh token only works once before the rotation breaks the chain and the session family gets revoked.",
+      },
+      {
+        title: "Idempotent Stripe webhooks",
+        body: "Stripe events are de-duplicated by event ID before they touch booking state. If a payment succeeds but the booking write fails, the order drops into a “pending reconciliation” status instead of silently retrying — it waits for a manual check rather than guessing.",
+      },
+      {
+        title: "Raw SQL for aggregation",
+        body: "Seat-occupancy and revenue reporting queries are hand-written SQL instead of JPA-generated queries. The aggregations are heavy enough that controlling the exact query plan mattered more than staying inside the ORM.",
+      },
+    ],
   },
 
   about: {
-    // 摘要:压缩自下方 paragraphs 的同一段真实文案,不引入新事实。
-    summary:
-      "Backend-focused software engineer building reliable, well-structured APIs with Java & Spring Boot.",
+    heading: "About",
     paragraphs: [
-      "I'm a software engineer with a Bachelor's degree in Software Systems Development. My focus is on backend systems and service architecture, primarily working with Java and Spring Boot to build reliable, well-structured APIs. I'm comfortable working across the full stack when a project calls for it, and I care about writing code that holds up under real-world conditions — correct, tested, and maintainable long after the first release.",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent volutpat, nisl eget cursus scelerisque, dolor sapien fermentum velit, at cursus arcu mi sed metus.",
+      "Sed euismod, nunc eget consectetur sagittis, nisl enim tempor sapien, at cursus arcu mi sed metus. Pellentesque habitant morbi tristique senectus et netus.",
     ],
   },
 
   skills: {
-    categories: [
-      {
-        title: "Languages",
-        items: [], // TODO: 待用户提供该分类技能列表
-      },
-      {
-        title: "Backend & Frameworks",
-        items: [], // TODO: 待用户提供该分类技能列表
-      },
-      {
-        title: "Frontend",
-        items: [], // TODO: 待用户提供该分类技能列表
-      },
-      {
-        title: "Databases & Infra",
-        items: [], // TODO: 待用户提供该分类技能列表
-      },
-    ],
-  },
-
-  project: {
-    // Featured Project — CineVerse
-    // 以下 name / stack / githubUrl / highlights[].title 已确认,非占位符
-    name: "CineVerse",
-    // 摘要:与 CLAUDE.md「项目说明」中对 CineVerse 的描述一致,非新增事实。
-    summary:
-      "Cinema ticket booking platform — Java Spring Boot, PostgreSQL, Redis, and Next.js.",
-    description: "// TODO: 待用户提供项目描述",
-    stack: [
-      "Java",
-      "Spring Boot",
-      "PostgreSQL",
-      "Redis",
-      "Next.js",
-      "TypeScript",
-      "Stripe API",
-    ],
-    githubUrl: "https://github.com/scsccso/cineverse",
-    highlights: [
-      {
-        title: "Redis 分布式锁防止并发超卖/双重预订",
-        description: "// TODO: 待用户提供该技术亮点的详细描述",
-      },
-      {
-        title: "Stripe 幂等支付流水线 + webhook 竞态处理",
-        description: "// TODO: 待用户提供该技术亮点的详细描述",
-      },
-      {
-        title: "JWT 认证(内存 access token + httpOnly refresh token 轮换)",
-        description: "// TODO: 待用户提供该技术亮点的详细描述",
-      },
+    heading: "Skills",
+    groups: [
+      { label: "Languages", items: ["Java", "TypeScript", "JavaScript", "Python", "SQL"] },
+      { label: "Frameworks", items: ["Spring Boot", "React", "Node.js"] },
+      { label: "Infrastructure", items: ["PostgreSQL", "Redis", "Docker", "AWS"] },
+      { label: "Tools", items: ["Git", "Linux", "Figma"] },
     ],
   },
 
   experience: {
-    // company 已确认,非占位符;其余字段待用户提供
-    positions: [
+    heading: "Work Experience",
+    items: [
       {
-        company: "Data Alliance Sdn Bhd",
-        role: "// TODO: 待用户提供职位名称",
-        period: "// TODO: 待用户提供时间段",
-        summary: "// TODO: 待用户提供叙述性简介(非简历式项目符号堆砌)",
+        role: "Software Engineer Intern",
+        org: "Placeholder Tech Co.",
+        period: "Summer 2025",
+        bullets: [
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+          "Sed do eiusmod tempor incididunt ut labore et dolore magna.",
+        ],
       },
       {
-        company: "Greenwave Technology Sdn Bhd",
-        role: "// TODO: 待用户提供职位名称",
-        period: "// TODO: 待用户提供时间段",
-        summary: "// TODO: 待用户提供叙述性简介(非简历式项目符号堆砌)",
+        role: "Teaching Assistant",
+        org: "Placeholder University",
+        period: "2024 – 2025",
+        bullets: [
+          "Ut enim ad minim veniam, quis nostrud exercitation ullamco.",
+        ],
       },
     ],
   },
 
   contact: {
-    email: "// TODO: 待用户提供邮箱",
-    linkedin: "// TODO: 待用户提供 LinkedIn 链接",
-    github: "// TODO: 待用户提供 GitHub 链接",
+    heading: "Let's Connect",
+    body: "Lorem ipsum dolor sit amet — open to new grad and internship opportunities.",
+    cta: { label: "Download Résumé", href: "#" },
+    email: "hello@example.com",
+    socials: [
+      { label: "GitHub", href: "https://github.com/yourusername" },
+      { label: "LinkedIn", href: "#" },
+    ],
   },
-};
 
-// 关键数字卡片:直接由 project.stack 的真实长度算出,不是编造的成就数据。
-content.stats = {
-  value: content.project.stack.length,
-  unit: "+",
-  label: "Technologies",
-  caption: "Powering CineVerse's full-stack architecture",
-};
+  github: {
+    username: "yourusername",
+    heatmapWeeks: 52,
+    stats: {
+      repos: 21,
+      stars: 5,
+      streakLabel: "Current streak",
+      yearLabel: "Contributions this year",
+    },
+    languages: [
+      { name: "Java", percent: 42, color: "#f89820" },
+      { name: "JavaScript", percent: 24, color: "#f1e05a" },
+      { name: "SQL", percent: 16, color: "#4a90d9" },
+      { name: "CSS", percent: 11, color: "#8a5cf5" },
+      { name: "Other", percent: 7, color: "#8a8f98" },
+    ],
+    pinnedRepo: {
+      name: "cineverse",
+      description: "Full-stack cinema ticketing platform — Spring Boot, PostgreSQL, Redis.",
+      language: "Java",
+      stars: 5,
+      url: "https://github.com/yourusername/cineverse",
+    },
+  },
 
-// 技术栈卡片:复用 project.stack,避免与 CineVerse 模块的数据来源产生分歧。
-content.techStack = {
-  caption: "Core stack behind CineVerse",
-  items: content.project.stack,
+  commands: [
+    { label: "Go to About", group: "Navigate", action: "scroll", target: "about" },
+    { label: "Go to Skills", group: "Navigate", action: "scroll", target: "skills" },
+    { label: "Go to CineVerse", group: "Navigate", action: "scroll", target: "cineverse" },
+    { label: "Go to Work Experience", group: "Navigate", action: "scroll", target: "experience" },
+    { label: "Go to Contact", group: "Navigate", action: "scroll", target: "contact" },
+    { label: "Open GitHub Profile", group: "Links", action: "link", target: "https://github.com/yourusername" },
+    { label: "Send an Email", group: "Links", action: "mailto", target: "hello@example.com" },
+    { label: "Download Résumé", group: "Links", action: "link", target: "#" },
+  ],
 };
