@@ -1537,6 +1537,20 @@ kbd {
     margin-bottom: 0;
 }
 
+.work-terminal {
+    margin-top: 2rem;
+}
+
+.log-date {
+    color: var(--text-secondary);
+    margin-right: 0.5rem;
+}
+
+.log-role {
+    color: var(--primary);
+    font-weight: 600;
+}
+
 .about-features {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1830,6 +1844,14 @@ kbd {
     font-size: 1.5rem;
     color: var(--text-muted);
     font-weight: 700;
+}
+
+.service-flag {
+    display: block;
+    font-family: var(--font-code);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
 }
 
 .service-title {
