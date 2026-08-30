@@ -1,20 +1,32 @@
 # Algorithm Practice
 
-个人算法与编程学习记录仓库，以 LeetCode 刷题为主，记录每道题的思路演进过程，供自己复盘用，不是作品集展示。会持续更新。
+Personal algorithm and programming learning log, mainly LeetCode problems. Tracks how my thinking evolves on each problem for self-review — not a portfolio showcase. Updated continuously.
 
-## 专题索引
+## Topic Index
 
-- [Two Pointers（双指针）](two-pointers/README.md)
-- [Sliding Window（滑动窗口）](sliding-window/README.md)
-- [Binary Search（二分查找）](binary-search/README.md)
+- [Two Pointers](two-pointers/README.md)
+- [Sliding Window](sliding-window/README.md)
+- [Binary Search](binary-search/README.md)
 
-## Commit 规范
+## Learning Method
 
-每次 commit 要写清楚：**哪道题 + 用了什么方法**，禁止使用 `update`、`fix`、`修改` 这类没有信息量的 commit message。
+- Workflow: attempt independently for 15-20 minutes before checking hints; after checking a hint, rewrite the solution from scratch instead of copying it
+- Required reflection fields for every problem:
+  - Where I got stuck
+  - What signal led me to this approach
+  - Solution evolution (brute force -> optimized, if applicable)
+  - Time/space complexity
+  - Whether I referenced an editorial/solution (and which part)
+- Update cadence: at least 3 problems per week; a problem isn't done until the reflection is filled in
+- Commit convention: see "Commit Convention" below
 
-示例：
+## Commit Convention
+
+Every commit message must state which problem + which approach was used. Don't use uninformative messages like `update` or `fix`.
+
+Example:
 
 ```
-3. Longest Substring Without Repeating Characters - 滑动窗口 + 哈希表
-704. Binary Search - 标准二分模板
+3. Longest Substring Without Repeating Characters - sliding window + hash set
+704. Binary Search - standard binary search template
 ```

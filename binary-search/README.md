@@ -1,10 +1,10 @@
-# Binary Search（二分查找）
+# Binary Search
 
-## 题目列表
+## Problem List
 
-（暂无，刷一道补一道）
+(None yet — added as I solve them)
 
-## 判断信号
+## Judgment Signals
 
 -
 -
